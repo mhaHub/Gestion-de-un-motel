@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-in Motel Halftime Inn</title>
+    <!-- Usaremos Tailwind CDN para un estilo limpio y rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 bg-gray-100">
+        <!-- Header -->
+        <header class="w-full max-w-4xl text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Halftime Inn</h1>
+            <p class="text-xl text-indigo-600 mt-1">Sistema Operativo - Check-in</p>
+        </header>
+
+        <!-- Flash Messages -->
+        <div class="w-full max-w-xl mb-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-3 mb-2 rounded-lg shadow-md text-sm {% if category == 'error' %}bg-red-500 text-white{% else %}bg-green-500 text-white{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Main Form Card -->
+        <div class="w-full max-w-xl bg-white p-8 rounded-xl shadow-2xl border-t-4 border-indigo-600">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">Registro de Entrada</h2>
+
+            <form method="POST" action="{{ url_for('checkin') }}">
+                
+                <!-- Recepcionista en Turno -->
+                <div class="mb-4">
+                    <label class="block text-gray-600 font-medium mb-2">Recepcionista en Turno</label>
+                    <!-- Mostramos el usuario de prueba, ID 1. No es editable. -->
+                    <input type="text" value="{{ recepcionista.username }}" readonly class="w-full p-3 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none text-gray-500">
+                </div>
+
+                <!-- Nombre del Cliente (Requerido) -->
+                <div class="mb-4">
+                    <label for="nombre_cliente" class="block text-gray-600 font-medium mb-2">Nombre o Alias del Cliente <span class="text-red-500">*</span></label>
+                    <input type="text" id="nombre_cliente" name="nombre_cliente" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" placeholder="Ej: Cliente 001">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Número de Habitación -->
+                    <div>
+                        <label for="habitacion_id" class="block text-gray-600 font-medium mb-2">Habitación <span class="text-red-500">*</span></label>
+                        <select id="habitacion_id" name="habitacion_id" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
+                            <option value="" disabled selected>Seleccione</option>
+                            {% for h in habitaciones %}
+                                <!-- El valor que se envía es el ID de la BD, no el número -->
+                                <option value="{{ h.id }}">
+                                    {{ h.numero }} ({{ h.tipo.value }}) - {{ "$%.2f"|format(200.00 if h.tipo.value == 'JACUZZI' else 150.00) }} /hr
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Solo se muestran las DISPONIBLES.</p>
+                    </div>
+
+                    <!-- Horas Reservadas -->
+                    <div>
+                        <label for="horas_reservadas" class="block text-gray-600 font-medium mb-2">Horas Reservadas <span class="text-red-500">*</span></label>
+                        <input type="number" id="horas_reservadas" name="horas_reservadas" required min="1" value="3" class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150">
+                    </div>
+                </div>
+
+                <!-- Control de Acceso -->
+                <div class="mb-6 p-4 border rounded-lg bg-indigo-50/50">
+                    <h3 class="font-semibold text-indigo-700 mb-3">Acceso Vehicular / A Pie</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-600 font-medium mb-2">Modo de Ingreso <span class="text-red-500">*</span></label>
+                        <div class="flex flex-wrap gap-4">
+                            <!-- Utilizamos los ENUMs de ModoIngreso -->
+                            {% for modo in ModoIngreso %}
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="modo_ingreso" value="{{ modo.name }}" required 
+                                       class="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                                       {% if modo.name == 'VEHICULO' %} checked {% endif %}>
+                                <span class="ml-2 text-gray-700">{{ modo.value }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Placas (Solo si es VEHICULO) -->
+                    <div class="mb-4">
+                        <label for="placas" class="block text-gray-600 font-medium mb-2">Placas (Opcional)</label>
+                        <input type="text" id="placas" name="placas" maxlength="10" class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 uppercase" placeholder="ABC-123">
+                    </div>
+                </div>
+
+                <!-- Botón de Check-in -->
+                <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-md transform hover:scale-[1.01]">
+                    Confirmar Check-in y Abrir Portón
+                </button>
+            </form>
+        </div>
+
+        <!-- Enlace de navegación -->
+        <div class="mt-6">
+            <a href="{{ url_for('dashboard') }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Ver Habitaciones Ocupadas (Dashboard)</a>
+        </div>
+    </div>
+</body>
+</html>
