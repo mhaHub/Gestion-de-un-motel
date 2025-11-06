@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Limpieza{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <h1 class="text-3xl font-extrabold text-gray-900">Gestión de Limpieza</h1>
+    <p class="text-gray-600">Habitaciones marcadas como LIMPIEZA después del Check-out. Marque como DISPONIBLE una vez limpias.</p>
+
+    <!-- Resumen rápido de estados -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-yellow-500">
+            <p class="text-sm font-medium text-gray-500">Necesitan Limpieza</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ habitaciones|length }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500">
+            <p class="text-sm font-medium text-gray-500">Disponibles</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ resumen.disponibles if resumen else 'N/A' }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500">
+            <p class="text-sm font-medium text-gray-500">Ocupadas</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ resumen.ocupadas if resumen else 'N/A' }}</p>
+        </div>
+    </div>
+
+
+    <!-- Tabla de Habitaciones en Limpieza -->
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hab. No.</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo en Limpieza</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for hab in habitaciones %}
+                    <tr class="hover:bg-yellow-50/50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-xl font-extrabold text-gray-800">{{ hab.numero }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {{ hab.tipo }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-500">
+                            {{ hab.tiempo_en_limpieza }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <form method="POST" action="{{ url_for('clean_complete', room_id=hab.id) }}" 
+                                onsubmit="return confirm('¿Confirmar que la Hab. {{ hab.numero }} está limpia y lista para ser rentada?')">
+                                <button type="submit" 
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 transition duration-150">
+                                    Marcar como Disponible
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                            ¡Todas las habitaciones están limpias! Buen trabajo.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

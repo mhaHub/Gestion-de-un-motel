@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="w-full max-w-sm">
+        <div class="bg-white p-8 rounded-xl shadow-2xl border border-gray-200 transform transition duration-500 hover:shadow-3xl">
+            <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-2">Motel Admin</h1>
+            <p class="text-center text-gray-500 mb-8">Ingresa tus credenciales para continuar.</p>
+            
+            <!-- ESTO ES CRUCIAL: Debe ser POST y usar url_for('login') -->
+            <form action="{{ url_for('login') }}" method="POST" class="space-y-6">
+                
+                <!-- Campo Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                    <input type="text" id="username" name="username" required
+                        class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150 shadow-sm"
+                        placeholder="admin">
+                </div>
+                
+                <!-- Campo Password -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                    <input type="password" id="password" name="password" required
+                        class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150 shadow-sm"
+                        placeholder="123">
+                </div>
+                
+                <!-- Botón de Iniciar Sesión -->
+                <button type="submit"
+                    class="w-full py-3 px-4 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition duration-200 transform hover:scale-105 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                    Iniciar Sesión
+                </button>
+            </form>
+            
+            <p class="text-center text-xs text-gray-400 mt-6">
+                Usuario de prueba: admin / 123 (después de ejecutar `flask load-initial-user`)
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

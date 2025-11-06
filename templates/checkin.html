@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Check-in Motel Halftime Inn</title>
-    <!-- Usaremos Tailwind CDN para un estilo limpio y rápido -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -22,7 +21,6 @@
             <p class="text-xl text-indigo-600 mt-1">Sistema Operativo - Check-in</p>
         </header>
 
-        <!-- Flash Messages -->
         <div class="w-full max-w-xl mb-4">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -44,8 +42,7 @@
                 <!-- Recepcionista en Turno -->
                 <div class="mb-4">
                     <label class="block text-gray-600 font-medium mb-2">Recepcionista en Turno</label>
-                    <!-- Mostramos el usuario de prueba, ID 1. No es editable. -->
-                    <input type="text" value="{{ recepcionista.username }}" readonly class="w-full p-3 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none text-gray-500">
+                    <input type="text" value="{{ current_user.username }}" readonly class="w-full p-3 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none text-gray-500">
                 </div>
 
                 <!-- Nombre del Cliente (Requerido) -->
@@ -84,7 +81,6 @@
                     <div class="mb-4">
                         <label class="block text-gray-600 font-medium mb-2">Modo de Ingreso <span class="text-red-500">*</span></label>
                         <div class="flex flex-wrap gap-4">
-                            <!-- Utilizamos los ENUMs de ModoIngreso -->
                             {% for modo in ModoIngreso %}
                             <label class="inline-flex items-center">
                                 <input type="radio" name="modo_ingreso" value="{{ modo.name }}" required 

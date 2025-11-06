@@ -45,6 +45,26 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+    @property
+    def is_active(self):
+        """Todos los usuarios están activos por defecto"""
+        return True
+    
+    @property
+    def is_authenticated(self):
+        """El usuario está autenticado"""
+        return True
+    
+    @property
+    def is_anonymous(self):
+        """No es un usuario anónimo"""
+        return False
+    
+    def get_id(self):
+        """Método requerido para obtener el ID del usuario"""
+        return str(self.id)
+
 
 class Habitacion(db.Model):
     __tablename__ = 'habitaciones'
