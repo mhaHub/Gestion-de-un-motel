@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Control de Habitaciones</title>
+    <meta http-equiv="refresh" content="15">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Incluir Chart.js para gráficas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -24,6 +25,11 @@
         }
         .clock-date {
             opacity: 0.9;
+        }
+        #actividadChart {
+            display: block !important;
+            width: 100% !important;
+            height: 256px !important;
         }
     </style>
 </head>
@@ -51,6 +57,13 @@
                 </div>
             </div>
         </header>
+
+        <!-- Enlace a Check-in -->
+        <div class="w-full max-w-6xl mb-6 flex justify-end">
+             <a href="{{ url_for('checkin') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                + Nuevo Check-in
+            </a>
+        </div>
 
         <!-- Flash Messages -->
         <div class="w-full max-w-6xl mb-4">
@@ -103,13 +116,6 @@
                     Estado actual en tiempo real
                 </p>
             </div>
-        </div>
-
-        <!-- Enlace a Check-in -->
-        <div class="w-full max-w-6xl mb-6 flex justify-end">
-             <a href="{{ url_for('checkin') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
-                + Nuevo Check-in
-            </a>
         </div>
 
         <!-- Habitaciones Ocupadas -->
@@ -169,7 +175,7 @@
 
     </div>
 
-    <!-- Script para el Reloj en Tiempo Real -->
+    <!-- Script para el Reloj en Tiempo Real CORREGIDO -->
     <script>
         function actualizarReloj() {
             const ahora = new Date();
@@ -203,22 +209,35 @@
         setInterval(actualizarReloj, 1000);
     </script>
 
-    <!-- Script para la gráfica PIE con datos REALES -->
+    <!-- Script CORREGIDO para la gráfica PIE con datos REALES -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('actividadChart').getContext('2d');
+            console.log("🔧 Iniciando carga de gráfica...");
             
-            // DATOS REALES desde Flask - usando los mismos datos del resumen
+            // DATOS REALES desde Flask
             const datosReales = {
                 ocupadas: {{ resumen.ocupadas }},
                 disponibles: {{ resumen.disponibles }},
                 total: {{ resumen.total_habitaciones }}
             };
             
-            // Calcular habitaciones en limpieza (total - ocupadas - disponibles)
-            const limpieza = datosReales.total - datosReales.ocupadas - datosReales.disponibles;
+            console.log("📊 Datos recibidos:", datosReales);
             
-            // GRÁFICA PIE con DATOS REALES
+            // Calcular habitaciones en limpieza
+            const limpieza = datosReales.total - datosReales.ocupadas - datosReales.disponibles;
+            console.log("🧹 Habitaciones en limpieza:", limpieza);
+            
+            // Verificar que el canvas existe
+            const canvas = document.getElementById('actividadChart');
+            if (!canvas) {
+                console.error("❌ No se encontró el canvas 'actividadChart'");
+                return;
+            }
+            console.log("✅ Canvas encontrado");
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Crear la gráfica
             const actividadChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
@@ -231,7 +250,7 @@
                         data: [
                             datosReales.ocupadas,
                             datosReales.disponibles, 
-                            Math.max(0, limpieza) // Asegurar que no sea negativo
+                            Math.max(0, limpieza) // Evitar números negativos
                         ],
                         backgroundColor: [
                             'rgba(239, 68, 68, 0.8)',    // Rojo - Ocupadas
@@ -281,6 +300,8 @@
                     }
                 }
             });
+            
+            console.log("✅ Gráfica creada exitosamente");
         });
     </script>
 </body>

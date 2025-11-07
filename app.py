@@ -13,6 +13,38 @@ from models import BASE_HOUR_PRICE, LUXURY_HOUR_PRICE
 from initial_data import load_initial_rooms, load_initial_user
 
 
+# 🔔 NUEVA FUNCIÓN: Lógica de Autolimpieza
+def check_auto_clean_complete(app):
+    """
+    Revisa y actualiza el estado de las habitaciones de LIMPIEZA a DISPONIBLE
+    si ha pasado más de 1 MINUTO desde el check-out.
+    """
+    
+    # Es crucial usar app.app_context() para interactuar con la DB
+    with app.app_context():
+        try:
+            # Define el límite de tiempo: 1 minuto atrás
+            limite_tiempo = datetime.now() - timedelta(seconds=15) 
+
+            # Busca las habitaciones en estado LIMPIEZA cuya renta asociada
+            # tiene una hora_salida_real (hora de check-out) anterior al límite.
+            habitaciones_a_liberar = db.session.query(Habitacion).join(Renta).filter(
+                Habitacion.estado == EstadoHabitacion.LIMPIEZA,
+                Renta.estado == 'CERRADA',
+                Renta.hora_salida_real <= limite_tiempo
+            ).all()
+
+            if habitaciones_a_liberar:
+                for habitacion in habitaciones_a_liberar:
+                    # Cambia el estado de la habitación
+                    habitacion.estado = EstadoHabitacion.DISPONIBLE
+                    
+                db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -20,6 +52,8 @@ def create_app():
     MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "12345678")
     MYSQL_DB = os.environ.get("MYSQL_DB", "motel_db")
     MYSQL_HOST = os.environ.get("MYSQL_HOST", "localhost")
+    
+
     
     app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -96,6 +130,9 @@ def create_app():
     @app.route('/dashboard')
     @login_required
     def dashboard():
+        # 🔔 NUEVA FUNCIÓN: Ejecuta la revisión y limpieza automática
+        check_auto_clean_complete(app) 
+        
         resumen = get_daily_summary()
         actividad = get_daily_activity_data()
         rentas_activas = Renta.query.filter(Renta.estado == 'ACTIVA').all()
@@ -257,10 +294,10 @@ def create_app():
                 flash_msg = (f'Check-out de Habitación {habitacion.numero} finalizado. '
                              f'Tiempo extra: {horas_extra_a_pagar} horas. '
                              f'Pago extra requerido: ${pago_extra:.2f}. Pago Total: ${pago_final:.2f}. '
-                             'Habitación marcada como LIMPIEZA.')
+                             'Habitación marcada como LIMPIEZA. Se liberará en 1 minuto.') # Mensaje informativo
                 flash(flash_msg, 'warning')
             else:
-                flash(f'Check-out de Habitación {habitacion.numero} completado sin cargos extra. Habitación marcada como LIMPIEZA.', 'success')
+                flash(f'Check-out de Habitación {habitacion.numero} completado sin cargos extra. Habitación marcada como LIMPIEZA. Se liberará en 1 minuto.', 'success') # Mensaje informativo
 
         except Exception as e:
             db.session.rollback()
