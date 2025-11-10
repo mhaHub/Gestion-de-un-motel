@@ -6,9 +6,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
+# --- Constantes de Precios ---
 BASE_HOUR_PRICE = 150.00
 LUXURY_HOUR_PRICE = 200.00 
 
+# --- Enumeraciones (Python standard Enum) ---
 
 class EstadoHabitacion(Enum):
     DISPONIBLE = 'DISPONIBLE'
@@ -16,15 +18,26 @@ class EstadoHabitacion(Enum):
     LIMPIEZA = 'LIMPIEZA'
     MANTENIMIENTO = 'MANTENIMIENTO'
     
+    def __str__(self):
+        return self.value
+
 class TipoHabitacion(Enum):
     NORMAL = 'NORMAL'
     JACUZZI = 'JACUZZI'
+
+    def __str__(self):
+        return self.value
 
 class ModoIngreso(Enum):
     VEHICULO = 'VEHICULO'
     API_CAMARA = 'API_CAMARA' 
     A_PIE = 'A_PIE'
     
+    def __str__(self):
+        return self.value
+    
+
+# --- Modelos de la Base de Datos ---
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -34,7 +47,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     
-    # Relación con Renta (un usuario puede tener muchas rentas)
     rentas = relationship("Renta", backref="recepcionista", lazy=True)
 
     def set_password(self, password):
@@ -43,26 +55,23 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<User {self.username}>'
     
+    # Métodos requeridos para Flask-Login (implementados manualmente)
     @property
     def is_active(self):
-        """Todos los usuarios están activos por defecto"""
         return True
     
     @property
     def is_authenticated(self):
-        """El usuario está autenticado"""
         return True
     
     @property
     def is_anonymous(self):
-        """No es un usuario anónimo"""
         return False
     
     def get_id(self):
-        """Método requerido para obtener el ID del usuario"""
         return str(self.id)
 
 
@@ -70,8 +79,9 @@ class Habitacion(db.Model):
     __tablename__ = 'habitaciones'
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(10), unique=True, nullable=False)
-    tipo = db.Column(db.Enum(TipoHabitacion), nullable=False)
-    estado = db.Column(db.Enum(EstadoHabitacion), nullable=False)
+    # Usar db.Enum para mapear el Enum de Python a SQL
+    tipo = db.Column(db.Enum(TipoHabitacion), nullable=False) 
+    estado = db.Column(db.Enum(EstadoHabitacion), nullable=False, default=EstadoHabitacion.DISPONIBLE)
     
 
     rentas = relationship("Renta", backref="habitacion", lazy=True)
@@ -100,11 +110,11 @@ class Renta(db.Model):
     pago_final = db.Column(db.Float, nullable=True)
     
     # Estado de la Renta
-    estado = db.Column(db.String(20), nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default='ACTIVA')
 
     accesos = relationship("RegistroAcceso", backref="renta", lazy=True)
     
-    def __repr__(self):
+    def _repr_(self):
         return f'<Renta {self.id} - Hab {self.habitacion_id}>'
 
 class RegistroAcceso(db.Model):
@@ -120,5 +130,5 @@ class RegistroAcceso(db.Model):
     hora_ingreso = db.Column(db.DateTime, nullable=False, default=datetime.now)
     hora_salida = db.Column(db.DateTime, nullable=True)
 
-    def __repr__(self):
+    def _repr_(self):
         return f'<Acceso {self.id} - Renta {self.renta_id}>'
