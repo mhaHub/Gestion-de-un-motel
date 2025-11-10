@@ -10,19 +10,154 @@
 </head>
 <body class="bg-gray-100 p-6">
 
-    <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+    <div class="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow-lg">
         <header class="mb-8 border-b pb-4">
-            <h1 class="text-3xl font-bold text-gray-800">📊 Reportes de Rentas e Ingresos</h1>
+            <h1 class="text-3xl font-bold text-gray-800">Reportes de Rentas e Ingresos</h1>
             <p class="text-gray-500">Datos históricos de habitaciones cerradas obtenidos de la base de datos.</p>
         </header>
 
+        <!-- FILTROS MEJORADOS -->
+        <div class="mb-6 bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+            <h3 class="text-lg font-semibold mb-4 text-indigo-700">Filtros de Reportes</h3>
+            <form method="GET" action="{{ url_for('reportes_rentas') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" 
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                    <input type="date" name="fecha_fin" value="{{ fecha_fin }}"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" 
+                            class="w-full bg-indigo-600 text-white p-2 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200">
+                        Aplicar Filtros
+                    </button>
+                </div>
+                <div class="flex items-end">
+                    <a href="{{ url_for('reportes_rentas') }}" 
+                       class="w-full bg-gray-500 text-white p-2 rounded-lg font-semibold hover:bg-gray-600 transition duration-200 text-center">
+                       Limpiar
+                    </a>
+                </div>
+            </form>
+            
+            <!-- MÉTRICAS COMPARATIVAS -->
+            {% if metricas %}
+            <div class="mt-4 p-4 bg-white rounded-lg border">
+                <h4 class="font-semibold text-gray-700 mb-2">Métricas Comparativas</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="text-center">
+                        <p class="text-gray-600">Período Actual</p>
+                        <p class="text-lg font-bold text-green-600">${{ "%.2f"|format(metricas.ventas_actual) }}</p>
+                        <p class="text-xs text-gray-500">{{ metricas.periodo_actual }}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-gray-600">Período Anterior</p>
+                        <p class="text-lg font-bold text-blue-600">${{ "%.2f"|format(metricas.ventas_anterior) }}</p>
+                        <p class="text-xs text-gray-500">{{ metricas.periodo_anterior }}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-gray-600">Variación</p>
+                        <p class="text-lg font-bold {% if metricas.variacion_porcentaje >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ "%.1f"|format(metricas.variacion_porcentaje) }}%
+                        </p>
+                        <p class="text-xs text-gray-500">vs período anterior</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
         <div class="mb-6">
             <a href="{{ url_for('dashboard') }}" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition duration-150">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
                 Volver al Dashboard
             </a>
         </div>
+
+        <!-- NUEVA SECCIÓN: REPORTE DE HORAS EXTRAS -->
+        {% if reportes.horas_extras %}
+        <div class="mb-8 bg-red-50 p-6 rounded-lg border border-red-200">
+            <h2 class="text-xl font-semibold mb-4 text-red-700">⏰ Reporte de Horas Extras Pagadas</h2>
+            <div class="overflow-x-auto mb-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-red-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Fecha</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Habitación</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-red-700 uppercase tracking-wider">Horas Extra</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-red-700 uppercase tracking-wider">Monto Extra</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for extra in reportes.horas_extras %}
+                        <tr class="hover:bg-red-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ extra.fecha }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ extra.habitacion }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ extra.cliente }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 text-right">{{ "%.2f"|format(extra.horas_extra) }} h</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">${{ "%.2f"|format(extra.monto_extra) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-red-100">
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-sm font-semibold text-red-700">TOTALES</td>
+                            <td class="px-6 py-4 text-sm font-bold text-red-700 text-right">{{ "%.2f"|format(reportes.total_horas_extra) }} h</td>
+                            <td class="px-6 py-4 text-sm font-bold text-red-700 text-right">${{ "%.2f"|format(reportes.total_monto_extra) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p class="text-sm text-red-600 text-center">
+                Total recaudado en horas extras: <strong>${{ "%.2f"|format(reportes.total_monto_extra) }}</strong>
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- NUEVA SECCIÓN: REPORTE VEHICULAR -->
+        {% if reportes.ingreso_vehiculos %}
+        <div class="mb-8 bg-blue-50 p-6 rounded-lg border border-blue-200">
+            <h2 class="text-xl font-semibold mb-4 text-blue-700">🚗 Reporte de Ingreso de Vehículos</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Placas</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Habitación</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Entrada</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Salida</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">Tiempo Total</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">Pago Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for vehiculo in reportes.ingreso_vehiculos %}
+                        <tr class="hover:bg-blue-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">{{ vehiculo.placas }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ vehiculo.habitacion }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ vehiculo.entrada }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ vehiculo.salida }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 text-right">{{ vehiculo.tiempo_total }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 text-right">${{ "%.2f"|format(vehiculo.pago_total) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-sm text-blue-600 text-center mt-3">
+                Total de vehículos registrados: <strong>{{ reportes.ingreso_vehiculos|length }}</strong>
+            </p>
+        </div>
+        {% endif %}
         
+        <!-- REPORTES ORIGINALES MEJORADOS -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             <div class="bg-gray-50 p-6 rounded-lg shadow">
@@ -34,7 +169,7 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"># Rentas</th>
-                                <th class="px-6 py-3 text-right text-xs font-font-medium text-gray-500 uppercase tracking-wider">Ingreso Total</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ingreso Total</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -110,6 +245,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- RESUMEN DE FILTROS APLICADOS -->
+        {% if fecha_inicio and fecha_fin %}
+        <div class="mt-8 p-4 bg-green-50 rounded-lg border border-green-200">
+            <p class="text-sm text-green-700 text-center">
+                Reporte filtrado del <strong>{{ fecha_inicio }}</strong> al <strong>{{ fecha_fin }}</strong>
+            </p>
+        </div>
+        {% endif %}
     </div>
 
     <script>
@@ -139,7 +283,22 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: true, text: 'Distribución de Ingresos por Tipo' }
+                        title: { 
+                            display: true, 
+                            text: 'Distribución de Ingresos por Tipo',
+                            font: { size: 14 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = reportes.ingresos_tipo.reduce((sum, item) => sum + item.ingreso, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: $${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -154,8 +313,10 @@
                         label: 'Número de Rentas',
                         data: reportes.rentas_modo.map(item => item.rentas),
                         backgroundColor: [
-                            '#ef4444', // Red (Efectivo)
-                            '#6366f1'  // Violet (Vehiculo)
+                            '#ef4444', // Red
+                            '#6366f1', // Violet
+                            '#10b981', // Green
+                            '#f59e0b'  // Amber
                         ],
                         hoverOffset: 4
                     }]
@@ -165,7 +326,11 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'top' },
-                        title: { display: true, text: 'Rentas por Modo de Ingreso' }
+                        title: { 
+                            display: true, 
+                            text: 'Rentas por Modo de Ingreso',
+                            font: { size: 14 }
+                        }
                     }
                 }
             });
@@ -175,11 +340,11 @@
             new Chart(ctx3, {
                 type: 'bar',
                 data: {
-                    labels: reportes.top_habitaciones.map(item => Hab. ${item.numero}),
+                    labels: reportes.top_habitaciones.map(item => `Hab. ${item.numero}`),
                     datasets: [{
                         label: 'Veces Rentada',
                         data: reportes.top_habitaciones.map(item => item.rentas),
-                        backgroundColor: '#3b82f6', // Blue
+                        backgroundColor: '#3b82f6',
                         borderColor: '#3b82f6',
                         borderWidth: 1
                     }]
@@ -189,13 +354,45 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
-                        title: { display: true, text: 'Frecuencia de Renta (Top 5)' }
+                        title: { 
+                            display: true, 
+                            text: 'Frecuencia de Renta (Top 5)',
+                            font: { size: 14 }
+                        }
                     },
                     scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Número de Rentas' } }
+                        y: { 
+                            beginAtZero: true, 
+                            title: { 
+                                display: true, 
+                                text: 'Número de Rentas',
+                                font: { size: 12 }
+                            } 
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Habitaciones',
+                                font: { size: 12 }
+                            }
+                        }
                     }
                 }
             });
+
+            // Configurar fechas por defecto en los filtros
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            
+            const fechaInicioInput = document.querySelector('input[name="fecha_inicio"]');
+            const fechaFinInput = document.querySelector('input[name="fecha_fin"]');
+            
+            if (!fechaInicioInput.value) {
+                fechaInicioInput.value = firstDay.toISOString().split('T')[0];
+            }
+            if (!fechaFinInput.value) {
+                fechaFinInput.value = today.toISOString().split('T')[0];
+            }
         });
     </script>
 </body>

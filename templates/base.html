@@ -4,13 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gestión de Motel{% endblock %}</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
+
+    <!-- 🆕 BARRA DE NAVEGACIÓN SUPERIOR -->
+    <nav class="bg-white shadow-lg border-b">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Título -->
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">🏨 Halftime Inn</h1>
+                </div>
+                
+                <!-- Menú de Navegación -->
+                <div class="flex space-x-4">
+                    <a href="{{ url_for('dashboard') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-indigo-600 transition">
+                        📊 Dashboard
+                    </a>
+                    <a href="{{ url_for('reservas') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-indigo-600 transition">
+                        📅 Reservaciones
+                    </a>
+                    <a href="{{ url_for('checkin') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-indigo-600 transition">
+                        ➕ Check-in
+                    </a>
+                    <a href="{{ url_for('reportes_rentas') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-indigo-600 transition">
+                        📈 Reportes
+                    </a>
+                    <a href="{{ url_for('limpieza') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-indigo-600 transition">
+                        🧹 Limpieza
+                    </a>
+                    <a href="{{ url_for('logout') }}" 
+                       class="px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition">
+                        🚪 Salir
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <!-- Bloque de Contenido y Mensajes Flash -->
     <main class="flex-grow p-4 md:p-8">

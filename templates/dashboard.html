@@ -59,6 +59,7 @@
             </div>
         </div>
 
+        
         <!-- Menú -->
         <nav class="flex-1 overflow-y-auto p-3">
             <ul class="space-y-1 text-sm">
@@ -68,6 +69,14 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M4 10v10h16V10" />
                         </svg>
                         Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reservas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Reservas
                     </a>
                 </li>
                 <li>
@@ -272,7 +281,7 @@
     <!-- Script para la gráfica PIE con datos REALES -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("🔧 Iniciando carga de gráfica...");
+            console.log("Iniciando carga de gráfica...");
             
             // DATOS REALES desde Flask
             const datosReales = {
@@ -281,19 +290,19 @@
                 total: {{ resumen.total_habitaciones }}
             };
             
-            console.log("📊 Datos recibidos:", datosReales);
+            console.log("Datos recibidos:", datosReales);
             
             // Calcular habitaciones en limpieza
             const limpieza = datosReales.total - datosReales.ocupadas - datosReales.disponibles;
-            console.log("🧹 Habitaciones en limpieza:", limpieza);
+            console.log("Habitaciones en limpieza:", limpieza);
             
             // Verificar que el canvas existe
             const canvas = document.getElementById('actividadChart');
             if (!canvas) {
-                console.error("❌ No se encontró el canvas 'actividadChart'");
+                console.error("No se encontró el canvas 'actividadChart'");
                 return;
             }
-            console.log("✅ Canvas encontrado");
+            console.log("Canvas encontrado");
             
             const ctx = canvas.getContext('2d');
             
@@ -361,7 +370,7 @@
                 }
             });
             
-            console.log("✅ Gráfica creada exitosamente");
+            console.log("Gráfica creada exitosamente");
         });
     </script>
 </body>

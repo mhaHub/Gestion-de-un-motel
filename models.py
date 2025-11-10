@@ -1,12 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, date, time
 from sqlalchemy.orm import relationship, backref
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-# --- Constantes de Precios ---
+# --- Constantes de Precios (Temporal - luego serán configurables) ---
 BASE_HOUR_PRICE = 150.00
 LUXURY_HOUR_PRICE = 200.00 
 
@@ -35,6 +35,12 @@ class ModoIngreso(Enum):
     
     def __str__(self):
         return self.value
+
+class EstadoReserva(Enum):
+    PENDIENTE = 'PENDIENTE'
+    CONFIRMADA = 'CONFIRMADA'
+    CANCELADA = 'CANCELADA'
+    COMPLETADA = 'COMPLETADA'
     
 
 # --- Modelos de la Base de Datos ---
@@ -47,7 +53,11 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     
+    # Para futura implementación multisucursal:
+    # sucursal_id = db.Column(db.Integer, db.ForeignKey('sucursales.id'))
+    
     rentas = relationship("Renta", backref="recepcionista", lazy=True)
+    reservas = relationship("Reserva", backref="recepcionista", lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,10 +65,10 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def _repr_(self):
+    def __repr__(self):
         return f'<User {self.username}>'
     
-    # Métodos requeridos para Flask-Login (implementados manualmente)
+    # Métodos requeridos para Flask-Login
     @property
     def is_active(self):
         return True
@@ -79,15 +89,27 @@ class Habitacion(db.Model):
     __tablename__ = 'habitaciones'
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(10), unique=True, nullable=False)
-    # Usar db.Enum para mapear el Enum de Python a SQL
     tipo = db.Column(db.Enum(TipoHabitacion), nullable=False) 
     estado = db.Column(db.Enum(EstadoHabitacion), nullable=False, default=EstadoHabitacion.DISPONIBLE)
     
+    # NUEVO: Catálogo administrable
+    precio_base = db.Column(db.Float, nullable=False, default=150.00)
+    caracteristicas = db.Column(db.Text, nullable=True)  # "Jacuzzi, TV, Estacionamiento"
+    activa = db.Column(db.Boolean, default=True)
+    
+    # Para futura implementación multisucursal:
+    # sucursal_id = db.Column(db.Integer, db.ForeignKey('sucursales.id'))
 
     rentas = relationship("Renta", backref="habitacion", lazy=True)
+    reservas = relationship("Reserva", backref="habitacion", lazy=True)
 
     def __repr__(self):
         return f'<Habitacion {self.numero} ({self.estado.value})>'
+    
+    def get_precio_hora(self):
+        """Retorna el precio por hora de la habitación"""
+        return self.precio_base
+
 
 class Renta(db.Model):
     __tablename__ = 'rentas'
@@ -112,23 +134,79 @@ class Renta(db.Model):
     # Estado de la Renta
     estado = db.Column(db.String(20), nullable=False, default='ACTIVA')
 
-    accesos = relationship("RegistroAcceso", backref="renta", lazy=True)
+    # NUEVO: Para mejor tracking
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
-    def _repr_(self):
+    # Relación con reserva (si aplica)
+    reserva_id = db.Column(db.Integer, db.ForeignKey('reservas.id'), nullable=True)
+
+    accesos = relationship("RegistroAcceso", backref="renta", lazy=True)
+    reserva = relationship("Reserva", backref="renta", uselist=False)
+    
+    def __repr__(self):
         return f'<Renta {self.id} - Hab {self.habitacion_id}>'
+
+
+# NUEVO: Modelo de Reservas
+class Reserva(db.Model):
+    __tablename__ = 'reservas'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    habitacion_id = db.Column(db.Integer, db.ForeignKey('habitaciones.id'), nullable=False)
+    recepcionista_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    cliente_nombre = db.Column(db.String(100), nullable=False)
+    cliente_telefono = db.Column(db.String(20), nullable=True)
+    
+    fecha_reserva = db.Column(db.Date, nullable=False)
+    hora_reserva = db.Column(db.Time, nullable=False)
+    horas_reservadas = db.Column(db.Integer, nullable=False)
+    
+    estado = db.Column(db.String(20), nullable=False, default='PENDIENTE')  # PENDIENTE, CONFIRMADA, CANCELADA, COMPLETADA
+    
+    # Precio estimado
+    precio_estimado = db.Column(db.Float, nullable=False)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    confirmada_at = db.Column(db.DateTime, nullable=True)
+    
+    def __repr__(self):
+        return f'<Reserva {self.id} - {self.cliente_nombre} - {self.fecha_reserva}>'
+
 
 class RegistroAcceso(db.Model):
     __tablename__ = 'registros_acceso'
     id = db.Column(db.Integer, primary_key=True)
     
-    # Llave foránea a Renta
     renta_id = db.Column(db.Integer, db.ForeignKey('rentas.id'), nullable=False)
     
-    # Datos de acceso
     modo_ingreso = db.Column(db.Enum(ModoIngreso), nullable=False)
     placas = db.Column(db.String(10), nullable=True)
     hora_ingreso = db.Column(db.DateTime, nullable=False, default=datetime.now)
     hora_salida = db.Column(db.DateTime, nullable=True)
 
-    def _repr_(self):
+    # NUEVO: Campos para futura integración con cámaras LPR
+    foto_placas_url = db.Column(db.String(255), nullable=True)
+    confianza_reconocimiento = db.Column(db.Float, nullable=True)
+    marca_vehiculo = db.Column(db.String(50), nullable=True)
+    color_vehiculo = db.Column(db.String(30), nullable=True)
+
+    def __repr__(self):
         return f'<Acceso {self.id} - Renta {self.renta_id}>'
+
+
+# NUEVO: Modelo para Sucursales (Base para futura implementación)
+class Sucursal(db.Model):
+    __tablename__ = 'sucursales'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False, unique=True)
+    direccion = db.Column(db.String(200), nullable=True)
+    telefono = db.Column(db.String(20), nullable=True)
+    activa = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    def __repr__(self):
+        return f'<Sucursal {self.nombre}>'

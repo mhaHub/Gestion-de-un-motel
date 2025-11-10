@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Reserva - Halftime Inn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+    
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-2xl font-bold text-gray-800">Nueva Reserva</h1>
+            <p class="text-gray-600">Registra una reserva anticipada</p>
+        </header>
+
+        <form method="POST" class="space-y-6">
+            <!-- Datos del Cliente -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente *</label>
+                    <input type="text" name="cliente_nombre" required 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Ej: Juan Pérez">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <input type="tel" name="cliente_telefono" 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Ej: 555-1234">
+                </div>
+            </div>
+
+            <!-- Selección de Habitación -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Habitación *</label>
+                <select name="habitacion_id" required 
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Selecciona una habitación</option>
+                    {% for hab in habitaciones %}
+                    <option value="{{ hab.id }}">
+                        {{ hab.numero }} ({{ hab.tipo.value }}) - ${{ "%.2f"|format(hab.precio_base) }}/hora
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Fecha y Hora -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Reserva *</label>
+                    <input type="date" name="fecha_reserva" required min="{{ fecha_minima }}"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Reserva *</label>
+                    <input type="time" name="hora_reserva" required 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <!-- Horas y Precio -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Horas Reservadas *</label>
+                    <input type="number" name="horas_reservadas" required min="1" value="3"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-end">
+                    <div class="bg-gray-50 p-3 rounded-lg w-full border">
+                        <p class="text-sm text-gray-600">Precio estimado:</p>
+                        <p class="text-lg font-semibold text-indigo-600" id="precio-estimado">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex gap-4 pt-4">
+                <button type="submit" 
+                        class="flex-1 bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
+                    Crear Reserva
+                </button>
+                <a href="{{ url_for('reservas') }}" 
+                   class="flex-1 bg-gray-500 text-white p-3 rounded-lg font-semibold hover:bg-gray-600 transition text-center">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Cálculo dinámico del precio
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectHabitacion = document.querySelector('select[name="habitacion_id"]');
+            const inputHoras = document.querySelector('input[name="horas_reservadas"]');
+            const precioElement = document.getElementById('precio-estimado');
+
+            function calcularPrecio() {
+                const habitacionOption = selectHabitacion.options[selectHabitacion.selectedIndex];
+                const horas = parseInt(inputHoras.value) || 0;
+                
+                if (habitacionOption.value && horas > 0) {
+                    // Extraer precio del texto de la opción
+                    const texto = habitacionOption.text;
+                    const match = texto.match(/\$([\d.]+)/);
+                    if (match) {
+                        const precioHora = parseFloat(match[1]);
+                        const total = precioHora * horas;
+                        precioElement.textContent = `$${total.toFixed(2)}`;
+                    }
+                } else {
+                    precioElement.textContent = '$0.00';
+                }
+            }
+
+            selectHabitacion.addEventListener('change', calcularPrecio);
+            inputHoras.addEventListener('input', calcularPrecio);
+            
+            // Calcular precio inicial
+            calcularPrecio();
+        });
+    </script>
+</body>
+</html>

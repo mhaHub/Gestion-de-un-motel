@@ -5,12 +5,10 @@ import math
 import click
 import os
 import sys
-# ⚠ Importamos 'desc' de sqlalchemy para usarlo correctamente en ORDER BY
 from sqlalchemy import func, desc 
-# Asegura que el directorio actual esté en el PATH para importar modelos
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from models import db, Habitacion, Renta, RegistroAcceso, User, EstadoHabitacion, TipoHabitacion, ModoIngreso
+from models import db, Habitacion, Renta, RegistroAcceso, User, EstadoHabitacion, TipoHabitacion, ModoIngreso, Reserva
 from models import BASE_HOUR_PRICE, LUXURY_HOUR_PRICE
 
 # --- Funciones de Carga Inicial ---
@@ -85,7 +83,7 @@ def check_auto_clean_complete(app):
             db.session.rollback()
 
 
-# 🔔 LÓGICA DE REPORTES (Consulta datos agregados)
+# 🔔 LÓGICA DE REPORTES (Consulta datos agregados) - VERSIÓN ORIGINAL
 def get_renta_reports():
     """Obtiene datos agregados para los reportes de ingresos y rentas por tipo/modo. (CORREGIDO)"""
     
@@ -132,6 +130,212 @@ def get_renta_reports():
     }
     
     return report_data
+
+
+# 🔔 LÓGICA DE REPORTES MEJORADA CON FILTROS - VERSIÓN CORREGIDA
+def get_renta_reports_mejorado(fecha_inicio=None, fecha_fin=None):
+    """Obtiene datos agregados para reportes con filtros de fecha - VERSIÓN CORREGIDA"""
+    
+    try:
+        # Base query con filtro de estado CERRADA
+        base_query = Renta.query.filter(Renta.estado == 'CERRADA')
+        
+        # Aplicar filtros de fecha si están presentes
+        if fecha_inicio and fecha_fin:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+                base_query = base_query.filter(
+                    Renta.hora_entrada.between(fecha_inicio_dt, fecha_fin_dt)
+                )
+            except ValueError:
+                # Si hay error en el formato, ignorar filtros
+                pass
+
+        # Obtener IDs de rentas filtradas
+        rentas_filtradas_ids = [r.id for r in base_query.all()]
+
+        # 1. Total de Ingresos y Rentas por Tipo de Habitación
+        ingresos_por_tipo = db.session.query(
+            Habitacion.tipo,
+            func.count(Renta.id).label('total_rentas'),
+            func.sum(Renta.pago_final).label('total_ingreso')
+        ).join(Habitacion, Renta.habitacion_id == Habitacion.id
+        ).filter(Renta.id.in_(rentas_filtradas_ids) if rentas_filtradas_ids else Renta.estado == 'CERRADA'
+        ).group_by(Habitacion.tipo).all()
+        
+        # 2. Total de Rentas por Modo de Ingreso
+        rentas_por_modo = db.session.query(
+            RegistroAcceso.modo_ingreso,
+            func.count(Renta.id).label('total_rentas')
+        ).join(RegistroAcceso, Renta.id == RegistroAcceso.renta_id
+        ).filter(Renta.id.in_(rentas_filtradas_ids) if rentas_filtradas_ids else Renta.estado == 'CERRADA'
+        ).group_by(RegistroAcceso.modo_ingreso).all()
+        
+        # 3. Top 5 Habitaciones más Rentadas
+        top_habitaciones = db.session.query(
+            Habitacion.numero,
+            func.count(Renta.id).label('num_rentas'),
+            func.sum(Renta.pago_final).label('ingreso_total')
+        ).join(Renta, Habitacion.id == Renta.habitacion_id
+        ).filter(Renta.id.in_(rentas_filtradas_ids) if rentas_filtradas_ids else Renta.estado == 'CERRADA'
+        ).group_by(Habitacion.numero
+        ).order_by(desc('num_rentas')).limit(5).all()
+        
+        # 4. Reporte de Horas Extras (SIMPLIFICADO)
+        horas_extras_query = db.session.query(
+            Renta.hora_entrada,
+            Habitacion.numero,
+            Renta.cliente_nombre,
+            Renta.pago_extra
+        ).join(Habitacion, Renta.habitacion_id == Habitacion.id
+        ).filter(
+            Renta.estado == 'CERRADA',
+            Renta.pago_extra > 0
+        )
+        
+        # Aplicar filtros de fecha a horas extras
+        if fecha_inicio and fecha_fin:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+                horas_extras_query = horas_extras_query.filter(
+                    Renta.hora_entrada.between(fecha_inicio_dt, fecha_fin_dt)
+                )
+            except ValueError:
+                pass
+        
+        horas_extras = horas_extras_query.order_by(desc(Renta.hora_entrada)).limit(50).all()
+        
+        # 5. Reporte Vehicular Detallado (SIMPLIFICADO)
+        ingresos_vehiculares_query = db.session.query(
+            RegistroAcceso.placas,
+            Habitacion.numero,
+            Renta.hora_entrada,
+            Renta.hora_salida_real,
+            Renta.pago_final
+        ).join(Renta, RegistroAcceso.renta_id == Renta.id
+        ).join(Habitacion, Renta.habitacion_id == Habitacion.id
+        ).filter(
+            Renta.estado == 'CERRADA',
+            RegistroAcceso.modo_ingreso == ModoIngreso.VEHICULO,
+            RegistroAcceso.placas.isnot(None)
+        )
+        
+        # Aplicar filtros de fecha a ingresos vehiculares
+        if fecha_inicio and fecha_fin:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+                ingresos_vehiculares_query = ingresos_vehiculares_query.filter(
+                    Renta.hora_entrada.between(fecha_inicio_dt, fecha_fin_dt)
+                )
+            except ValueError:
+                pass
+        
+        ingresos_vehiculares = ingresos_vehiculares_query.order_by(desc(Renta.hora_entrada)).limit(50).all()
+        
+        # Calcular totales de horas extras (SIMPLIFICADO)
+        total_monto_extra = sum(float(h.pago_extra) for h in horas_extras if h.pago_extra)
+        total_horas_extra = round(total_monto_extra / 150.00, 2)  # Aproximación simple
+        
+        # Formateo de los resultados
+        report_data = {
+            'ingresos_tipo': [{'tipo': t.value, 'rentas': c, 'ingreso': float(i) if i else 0.0} for t, c, i in ingresos_por_tipo],
+            'rentas_modo': [{'modo': m.value, 'rentas': c} for m, c in rentas_por_modo],
+            'top_habitaciones': [{'numero': num, 'rentas': c, 'ingreso_total': float(i) if i else 0.0} for num, c, i in top_habitaciones],
+            # NUEVOS DATOS (SIMPLIFICADOS)
+            'horas_extras': [{
+                'fecha': h.hora_entrada.strftime('%Y-%m-%d %H:%M') if h.hora_entrada else 'N/A',
+                'habitacion': h.numero,
+                'cliente': h.cliente_nombre,
+                'horas_extra': round(float(h.pago_extra) / 150.00, 2) if h.pago_extra else 0.0,
+                'monto_extra': float(h.pago_extra) if h.pago_extra else 0.0
+            } for h in horas_extras],
+            'ingreso_vehiculos': [{
+                'placas': v.placas,
+                'habitacion': v.numero,
+                'entrada': v.hora_entrada.strftime('%Y-%m-%d %H:%M') if v.hora_entrada else 'N/A',
+                'salida': v.hora_salida_real.strftime('%Y-%m-%d %H:%M') if v.hora_salida_real else 'N/A',
+                'pago_total': float(v.pago_final) if v.pago_final else 0.0,
+                'tiempo_total': 'Calculado'  # Simplificado para evitar errores
+            } for v in ingresos_vehiculares],
+            'total_horas_extra': total_horas_extra,
+            'total_monto_extra': total_monto_extra
+        }
+        
+        return report_data
+        
+    except Exception as e:
+        print(f"Error en get_renta_reports_mejorado: {e}")
+        # Retornar estructura vacía pero válida
+        return {
+            'ingresos_tipo': [],
+            'rentas_modo': [],
+            'top_habitaciones': [],
+            'horas_extras': [],
+            'ingreso_vehiculos': [],
+            'total_horas_extra': 0,
+            'total_monto_extra': 0
+        }
+
+
+# --- FUNCIÓN SIMPLIFICADA PARA MÉTRICAS COMPARATIVAS - VERSIÓN CORREGIDA ---
+def get_metricas_comparativas(fecha_inicio=None, fecha_fin=None):
+    """Calcula métricas comparativas SIMPLIFICADAS - VERSIÓN CORREGIDA"""
+    
+    try:
+        # Si no hay fechas, no calcular métricas comparativas
+        if not fecha_inicio or not fecha_fin:
+            return {
+                'ventas_actual': 0,
+                'ventas_anterior': 0,
+                'variacion_porcentaje': 0,
+                'periodo_actual': 'Sin filtros aplicados',
+                'periodo_anterior': 'Selecciona un período'
+            }
+
+        # Convertir fechas de string a datetime
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        
+        # Ventas del período actual
+        ventas_actual = db.session.query(func.sum(Renta.pago_final)).filter(
+            Renta.estado == 'CERRADA',
+            Renta.hora_entrada.between(fecha_inicio_dt, fecha_fin_dt + timedelta(days=1))
+        ).scalar() or 0
+
+        # Calcular período anterior (30 días antes) - EVITAR CÁLCULOS COMPLEJOS
+        fecha_inicio_anterior = fecha_inicio_dt - timedelta(days=30)
+        fecha_fin_anterior = fecha_fin_dt - timedelta(days=30)
+        
+        ventas_anterior = db.session.query(func.sum(Renta.pago_final)).filter(
+            Renta.estado == 'CERRADA',
+            Renta.hora_entrada.between(fecha_inicio_anterior, fecha_fin_anterior + timedelta(days=1))
+        ).scalar() or 0
+
+        # Calcular variación
+        variacion = 0
+        if ventas_anterior > 0:
+            variacion = ((ventas_actual - ventas_anterior) / ventas_anterior) * 100
+        
+        return {
+            'ventas_actual': float(ventas_actual),
+            'ventas_anterior': float(ventas_anterior),
+            'variacion_porcentaje': round(variacion, 2),
+            'periodo_actual': f"{fecha_inicio} a {fecha_fin}",
+            'periodo_anterior': f"{fecha_inicio_anterior.strftime('%Y-%m-%d')} a {fecha_fin_anterior.strftime('%Y-%m-%d')}"
+        }
+        
+    except Exception as e:
+        print(f"Error en get_metricas_comparativas: {e}")
+        return {
+            'ventas_actual': 0,
+            'ventas_anterior': 0,
+            'variacion_porcentaje': 0,
+            'periodo_actual': 'Error en cálculo',
+            'periodo_anterior': 'Error en cálculo'
+        }
 
 
 def create_app():
@@ -474,16 +678,243 @@ def create_app():
         return redirect(url_for('limpieza'))
 
 
-    # --- 🔔 RUTA DE REPORTES Y GRÁFICAS ---
+    # --- RUTA DE REPORTES Y GRÁFICAS MEJORADA ---
     @app.route('/reportes_rentas')
     @login_required
     def reportes_rentas():
-        # Llama a la función corregida para obtener los datos agregados
-        reportes = get_renta_reports()
+        # Obtener parámetros de filtro
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        tipo_reporte = request.args.get('tipo_reporte', 'general')
+        
+        # Llama a la función mejorada para obtener los datos
+        reportes = get_renta_reports_mejorado(fecha_inicio, fecha_fin)
+        
+        # Datos adicionales para métricas comparativas
+        metricas = get_metricas_comparativas(fecha_inicio, fecha_fin)
         
         return render_template('reportes.html', 
-                                reportes=reportes)
+                              reportes=reportes,
+                              metricas=metricas,
+                              fecha_inicio=fecha_inicio,
+                              fecha_fin=fecha_fin,
+                              tipo_reporte=tipo_reporte)
 
+
+    # --- RUTA API PARA REPORTES ESPECÍFICOS ---
+    @app.route('/api/reportes/horas-extras')
+    @login_required
+    def api_horas_extras():
+        """API para obtener solo datos de horas extras"""
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        
+        reportes = get_renta_reports_mejorado(fecha_inicio, fecha_fin)
+        return jsonify({
+            'horas_extras': reportes['horas_extras'],
+            'total_monto_extra': reportes['total_monto_extra']
+        })
+
+
+    @app.route('/api/reportes/vehicular')
+    @login_required
+    def api_vehicular():
+        """API para obtener solo datos vehiculares"""
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        
+        reportes = get_renta_reports_mejorado(fecha_inicio, fecha_fin)
+        return jsonify({
+            'ingreso_vehiculos': reportes['ingreso_vehiculos']
+        })
+
+    #SISTEMA DE RESERVAS - AGREGADO EN LA POSICIÓN CORRECTA
+
+    @app.route('/reservas')
+    @login_required
+    def reservas():
+        """Lista todas las reservas"""
+        try:
+            reservas_lista = Reserva.query.order_by(Reserva.fecha_reserva.desc()).all()
+            habitaciones = Habitacion.query.all()
+            
+            return render_template('reservas.html', 
+                                 reservas=reservas_lista, 
+                                 habitaciones=habitaciones)
+        except Exception as e:
+            flash(f'Error al cargar reservas: {str(e)}', 'error')
+            return redirect(url_for('dashboard'))
+
+    @app.route('/nueva_reserva', methods=['GET', 'POST'])
+    @login_required
+    def nueva_reserva():
+        """Crear nueva reserva"""
+        if request.method == 'POST':
+            try:
+                habitacion_id = request.form.get('habitacion_id', type=int)
+                cliente_nombre = request.form.get('cliente_nombre')
+                cliente_telefono = request.form.get('cliente_telefono', '')
+                fecha_reserva_str = request.form.get('fecha_reserva')
+                hora_reserva_str = request.form.get('hora_reserva')
+                horas_reservadas = request.form.get('horas_reservadas', type=int)
+
+                # Validaciones básicas
+                if not all([habitacion_id, cliente_nombre, fecha_reserva_str, hora_reserva_str, horas_reservadas]):
+                    flash('Todos los campos son obligatorios', 'error')
+                    return redirect(url_for('nueva_reserva'))
+
+                # Convertir fechas
+                fecha_reserva = datetime.strptime(fecha_reserva_str, '%Y-%m-%d').date()
+                hora_reserva = datetime.strptime(hora_reserva_str, '%H:%M').time()
+
+                # Verificar disponibilidad de habitación
+                habitacion = Habitacion.query.get(habitacion_id)
+                if not habitacion or not habitacion.activa:
+                    flash('Habitación no disponible', 'error')
+                    return redirect(url_for('nueva_reserva'))
+
+                # Calcular precio estimado
+                precio_estimado = habitacion.precio_base * horas_reservadas
+
+                # Crear reserva
+                nueva_reserva = Reserva(
+                    habitacion_id=habitacion_id,
+                    recepcionista_id=current_user.id,
+                    cliente_nombre=cliente_nombre,
+                    cliente_telefono=cliente_telefono,
+                    fecha_reserva=fecha_reserva,
+                    hora_reserva=hora_reserva,
+                    horas_reservadas=horas_reservadas,
+                    precio_estimado=precio_estimado,
+                    estado='PENDIENTE'
+                )
+
+                db.session.add(nueva_reserva)
+                db.session.commit()
+
+                flash(f'Reserva creada exitosamente para {cliente_nombre}. Precio estimado: ${precio_estimado:.2f}', 'success')
+                return redirect(url_for('reservas'))
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error al crear reserva: {str(e)}', 'error')
+                return redirect(url_for('nueva_reserva'))
+
+        else:
+            # GET - Mostrar formulario
+            habitaciones_disponibles = Habitacion.query.filter_by(activa=True).all()
+            
+            # Fecha mínima (hoy)
+            fecha_minima = datetime.now().strftime('%Y-%m-%d')
+            
+            return render_template('nueva_reserva.html',
+                                 habitaciones=habitaciones_disponibles,
+                                 fecha_minima=fecha_minima)
+
+    @app.route('/confirmar_reserva/<int:reserva_id>', methods=['POST'])
+    @login_required
+    def confirmar_reserva(reserva_id):
+        """Confirmar una reserva pendiente"""
+        try:
+            reserva = Reserva.query.get_or_404(reserva_id)
+            
+            if reserva.estado != 'PENDIENTE':
+                flash('Solo se pueden confirmar reservas pendientes', 'error')
+                return redirect(url_for('reservas'))
+
+            reserva.estado = 'CONFIRMADA'
+            reserva.confirmada_at = datetime.now()
+            
+            db.session.commit()
+            
+            flash(f'Reserva de {reserva.cliente_nombre} confirmada exitosamente', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al confirmar reserva: {str(e)}', 'error')
+        
+        return redirect(url_for('reservas'))
+
+    @app.route('/convertir_a_checkin/<int:reserva_id>', methods=['POST'])
+    @login_required
+    def convertir_a_checkin(reserva_id):
+        """Convertir reserva confirmada a check-in"""
+        try:
+            reserva = Reserva.query.get_or_404(reserva_id)
+            
+            if reserva.estado != 'CONFIRMADA':
+                flash('Solo se pueden convertir reservas confirmadas', 'error')
+                return redirect(url_for('reservas'))
+
+            # Verificar que la habitación esté disponible
+            habitacion = reserva.habitacion
+            if habitacion.estado != EstadoHabitacion.DISPONIBLE:
+                flash(f'La habitación {habitacion.numero} no está disponible', 'error')
+                return redirect(url_for('reservas'))
+
+            # Crear renta a partir de la reserva
+            hora_entrada = datetime.now()
+            hora_salida_estimada = hora_entrada + timedelta(hours=reserva.horas_reservadas)
+
+            nueva_renta = Renta(
+                habitacion_id=reserva.habitacion_id,
+                recepcionista_id=current_user.id,
+                cliente_nombre=reserva.cliente_nombre,
+                horas_reservadas=reserva.horas_reservadas,
+                hora_entrada=hora_entrada,
+                hora_salida_estimada=hora_salida_estimada,
+                pago_horas=reserva.precio_estimado,
+                precio_hora=habitacion.precio_base,
+                estado='ACTIVA',
+                reserva_id=reserva.id  # Relacionar con la reserva
+            )
+
+            db.session.add(nueva_renta)
+            db.session.flush()
+
+            # Crear registro de acceso
+            registro_acceso = RegistroAcceso(
+                renta_id=nueva_renta.id,
+                modo_ingreso=ModoIngreso.A_PIE,  # Por defecto a pie para reservas
+                hora_ingreso=hora_entrada
+            )
+            db.session.add(registro_acceso)
+
+            # Actualizar estado de habitación y reserva
+            habitacion.estado = EstadoHabitacion.OCUPADA
+            reserva.estado = 'COMPLETADA'
+
+            db.session.commit()
+
+            flash(f'Check-in exitoso desde reserva! Habitación {habitacion.numero} ocupada.', 'success')
+            return redirect(url_for('dashboard'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al convertir reserva a check-in: {str(e)}', 'error')
+            return redirect(url_for('reservas'))
+
+    @app.route('/cancelar_reserva/<int:reserva_id>', methods=['POST'])
+    @login_required
+    def cancelar_reserva(reserva_id):
+        """Cancelar una reserva"""
+        try:
+            reserva = Reserva.query.get_or_404(reserva_id)
+            
+            if reserva.estado == 'COMPLETADA':
+                flash('No se puede cancelar una reserva ya completada', 'error')
+                return redirect(url_for('reservas'))
+
+            reserva.estado = 'CANCELADA'
+            db.session.commit()
+            
+            flash(f'Reserva de {reserva.cliente_nombre} cancelada', 'info')
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al cancelar reserva: {str(e)}', 'error')
+        
+        return redirect(url_for('reservas'))
 
     # --- COMANDOS CLI ---
     @app.cli.command("init-db")
