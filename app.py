@@ -56,7 +56,6 @@ def load_initial_user(app):
             db.session.rollback()
             click.echo(f"Error al cargar el usuario inicial: {e}")
 
-# 🔔 LÓGICA DE AUTOLIMPIEZA
 def check_auto_clean_complete(app):
     """
     Revisa y actualiza el estado de las habitaciones de LIMPIEZA a DISPONIBLE
@@ -838,7 +837,7 @@ def create_app():
     @app.route('/convertir_a_checkin/<int:reserva_id>', methods=['POST'])
     @login_required
     def convertir_a_checkin(reserva_id):
-        """Convertir reserva confirmada a check-in"""
+        """Convertir reserva confirmada a check-in - VERSIÓN CORREGIDA"""
         try:
             reserva = Reserva.query.get_or_404(reserva_id)
             
@@ -852,16 +851,25 @@ def create_app():
                 flash(f'La habitación {habitacion.numero} no está disponible', 'error')
                 return redirect(url_for('reservas'))
 
+            # ✅ CAPTURAR DATOS DEL FORMULARIO
+            tipo_ingreso = request.form.get('tipo_ingreso', 'a_pie')
+            placa_vehiculo = request.form.get('placa_vehiculo', '')
+
+            # ✅ ACTUALIZAR LOS CAMPOS NUEVOS EN LA RESERVA
+            hora_entrada_real = datetime.now()
+            reserva.fecha_hora_entrada_real = hora_entrada_real
+            reserva.tipo_ingreso = tipo_ingreso
+            reserva.placa_vehiculo = placa_vehiculo
+
             # Crear renta a partir de la reserva
-            hora_entrada = datetime.now()
-            hora_salida_estimada = hora_entrada + timedelta(hours=reserva.horas_reservadas)
+            hora_salida_estimada = hora_entrada_real + timedelta(hours=reserva.horas_reservadas)
 
             nueva_renta = Renta(
                 habitacion_id=reserva.habitacion_id,
                 recepcionista_id=current_user.id,
                 cliente_nombre=reserva.cliente_nombre,
                 horas_reservadas=reserva.horas_reservadas,
-                hora_entrada=hora_entrada,
+                hora_entrada=hora_entrada_real,
                 hora_salida_estimada=hora_salida_estimada,
                 pago_horas=reserva.precio_estimado,
                 precio_hora=habitacion.precio_base,
@@ -872,11 +880,15 @@ def create_app():
             db.session.add(nueva_renta)
             db.session.flush()
 
+            # Determinar modo_ingreso para RegistroAcceso
+            modo_ingreso_enum = ModoIngreso.VEHICULO if tipo_ingreso == 'vehiculo' else ModoIngreso.A_PIE
+
             # Crear registro de acceso
             registro_acceso = RegistroAcceso(
                 renta_id=nueva_renta.id,
-                modo_ingreso=ModoIngreso.A_PIE,  # Por defecto a pie para reservas
-                hora_ingreso=hora_entrada
+                modo_ingreso=modo_ingreso_enum,
+                placas=placa_vehiculo if tipo_ingreso == 'vehiculo' and placa_vehiculo else None,
+                hora_ingreso=hora_entrada_real
             )
             db.session.add(registro_acceso)
 

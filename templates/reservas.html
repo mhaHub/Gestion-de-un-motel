@@ -79,11 +79,12 @@
                                 {% endif %}
                                 
                                 {% if reserva.estado == 'CONFIRMADA' %}
-                                <form method="POST" action="{{ url_for('convertir_a_checkin', reserva_id=reserva.id) }}">
-                                    <button type="submit" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
-                                        Check-in
-                                    </button>
-                                </form>
+                                <!-- Botón para abrir modal de check-in -->
+                                <button type="button" 
+                                        onclick="openCheckinModal({{ reserva.id }}, '{{ reserva.cliente_nombre }}', '{{ reserva.habitacion.numero }}')"
+                                        class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                                    Check-in
+                                </button>
                                 {% endif %}
                                 
                                 {% if reserva.estado != 'COMPLETADA' %}
@@ -108,5 +109,79 @@
             </table>
         </div>
     </div>
+
+    <!-- Modal para Check-in desde Reserva -->
+    <div id="checkinModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Confirmar Check-in</h3>
+                
+                <div class="mb-4 p-3 bg-blue-50 rounded">
+                    <p class="text-sm text-blue-800">
+                        <strong>Cliente:</strong> <span id="modalClienteNombre"></span><br>
+                        <strong>Habitación:</strong> <span id="modalHabitacionNumero"></span>
+                    </p>
+                </div>
+                
+                <form id="checkinForm" method="POST">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Ingreso *</label>
+                        <select name="tipo_ingreso" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="vehiculo">Vehículo</option>
+                            <option value="a_pie">A Pie</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Placa del Vehículo (opcional)</label>
+                        <input type="text" name="placa_vehiculo" 
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="ABC123">
+                        <p class="text-xs text-gray-500 mt-1">Solo completar si el ingreso es en vehículo</p>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" 
+                                onclick="closeCheckinModal()"
+                                class="px-4 py-2 text-sm border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Confirmar Check-in
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentReservaId = null;
+
+    function openCheckinModal(reservaId, clienteNombre, habitacionNumero) {
+        currentReservaId = reservaId;
+        document.getElementById('modalClienteNombre').textContent = clienteNombre;
+        document.getElementById('modalHabitacionNumero').textContent = habitacionNumero;
+        
+        // Configurar el action del formulario
+        document.getElementById('checkinForm').action = `/convertir_a_checkin/${reservaId}`;
+        
+        // Mostrar modal
+        document.getElementById('checkinModal').classList.remove('hidden');
+    }
+
+    function closeCheckinModal() {
+        document.getElementById('checkinModal').classList.add('hidden');
+        currentReservaId = null;
+    }
+
+    // Cerrar modal al hacer click fuera
+    document.getElementById('checkinModal').addEventListener('click', function(e) {
+        if (e.target.id === 'checkinModal') {
+            closeCheckinModal();
+        }
+    });
+    </script>
 </body>
 </html>
