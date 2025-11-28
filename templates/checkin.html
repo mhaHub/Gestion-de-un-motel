@@ -11,6 +11,17 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
+        .hora-option {
+            transition: all 0.2s ease;
+        }
+        .hora-option:hover {
+            transform: scale(1.05);
+        }
+        .hora-option.selected {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
     </style>
 </head>
 <body>
@@ -42,13 +53,13 @@
                 <!-- Recepcionista en Turno -->
                 <div class="mb-4">
                     <label class="block text-gray-600 font-medium mb-2">Recepcionista en Turno</label>
-                    <input type="text" value="{{ current_user.username }}" readonly class="w-full p-3 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none text-gray-500">
+                    <input type="text" value="{{ current_user.username }} - {{ current_user.turno or 'Sin turno' }}" readonly class="w-full p-3 border border-gray-300 bg-gray-50 rounded-lg focus:outline-none text-gray-500">
                 </div>
 
-                <!-- Nombre del Cliente (Requerido) -->
+                <!-- ✅ NUEVO: Comentarios en lugar de Nombre -->
                 <div class="mb-4">
-                    <label for="nombre_cliente" class="block text-gray-600 font-medium mb-2">Nombre o Alias del Cliente <span class="text-red-500">*</span></label>
-                    <input type="text" id="nombre_cliente" name="nombre_cliente" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" placeholder="Ej: Cliente 001">
+                    <label for="nombre_cliente" class="block text-gray-600 font-medium mb-2">Comentarios <span class="text-red-500">*</span></label>
+                    <input type="text" id="nombre_cliente" name="nombre_cliente" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" placeholder="Ej: Cliente 001, Vehículo rojo, etc.">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-6">
@@ -58,19 +69,49 @@
                         <select id="habitacion_id" name="habitacion_id" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
                             <option value="" disabled selected>Seleccione</option>
                             {% for h in habitaciones %}
-                                <!-- El valor que se envía es el ID de la BD, no el número -->
                                 <option value="{{ h.id }}">
-                                    {{ h.numero }} ({{ h.tipo.value }}) - {{ "$%.2f"|format(200.00 if h.tipo.value == 'JACUZZI' else 150.00) }} /hr
+                                    {{ h.numero }} ({{ h.tipo.value }}) - {{ "$%.2f"|format(h.precio_base) }} /hr
                                 </option>
                             {% endfor %}
                         </select>
                         <p class="text-xs text-gray-500 mt-1">Solo se muestran las DISPONIBLES.</p>
                     </div>
 
-                    <!-- Horas Reservadas -->
+                    <!-- ✅ NUEVO: Horas Predefinidas -->
                     <div>
-                        <label for="horas_reservadas" class="block text-gray-600 font-medium mb-2">Horas Reservadas <span class="text-red-500">*</span></label>
-                        <input type="number" id="horas_reservadas" name="horas_reservadas" required min="1" value="3" class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150">
+                        <label class="block text-gray-600 font-medium mb-2">Horas Reservadas <span class="text-red-500">*</span></label>
+                        <div class="grid grid-cols-3 gap-2" id="horas-container">
+                            <!-- Opciones predefinidas -->
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="4">
+                                <div class="font-semibold">4 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-4">0</span></div>
+                            </button>
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="6">
+                                <div class="font-semibold">6 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-6">0</span></div>
+                            </button>
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="12">
+                                <div class="font-semibold">12 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-12">0</span></div>
+                            </button>
+                        </div>
+                        
+                        <!-- ✅ NUEVO: Campo para horas personalizadas -->
+                        <div class="mt-3">
+                            <label class="block text-sm text-gray-600 mb-1">Más horas (personalizado)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="horas_personalizadas" name="horas_personalizadas" min="1" max="24" 
+                                       class="flex-1 p-2 border border-gray-300 rounded-lg focus:border-indigo-500" 
+                                       placeholder="Ej: 8">
+                                <button type="button" id="btn-aplicar-personalizado" 
+                                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
+                                    Aplicar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Campo oculto para enviar las horas seleccionadas -->
+                        <input type="hidden" id="horas_reservadas" name="horas_reservadas" required value="">
                     </div>
                 </div>
 
@@ -95,12 +136,25 @@
                     <!-- Placas (Solo si es VEHICULO) -->
                     <div class="mb-4">
                         <label for="placas" class="block text-gray-600 font-medium mb-2">Placas (Opcional)</label>
-                        <input type="text" id="placas" name="placas" maxlength="10" class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 uppercase" placeholder="ABC-123">
+                        <div class="flex gap-2">
+                            <input type="text" id="placas" name="placas" maxlength="10" 
+                                   class="flex-1 p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 uppercase" 
+                                   placeholder="ABC-123">
+                            <!-- ✅ NUEVO: Botón para leer placas con cámara -->
+                            <button type="button" id="btn-leer-placas" 
+                                    class="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                <span>📷</span>
+                                <span class="hidden sm:inline">Leer Placa</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Solo completar si el ingreso es en vehículo</p>
                     </div>
                 </div>
 
                 <!-- Botón de Check-in -->
-                <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-md transform hover:scale-[1.01]">
+                <button type="submit" id="btn-checkin" 
+                        class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-md transform hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
                     Confirmar Check-in y Abrir Portón
                 </button>
             </form>
@@ -111,5 +165,127 @@
             <a href="{{ url_for('dashboard') }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Ver Habitaciones Ocupadas (Dashboard)</a>
         </div>
     </div>
+
+    <script>
+        // Variables globales
+        let precioHoraActual = 0;
+        let horasSeleccionadas = 0;
+
+        // Actualizar precios cuando se selecciona una habitación
+        document.getElementById('habitacion_id').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                // Extraer precio base del texto de la opción
+                const texto = selectedOption.text;
+                const match = texto.match(/\$([0-9.]+)/);
+                if (match) {
+                    precioHoraActual = parseFloat(match[1]);
+                    actualizarPrecios();
+                    verificarFormularioCompleto();
+                }
+            }
+        });
+
+        // Función para actualizar precios en las opciones
+        function actualizarPrecios() {
+            if (precioHoraActual > 0) {
+                document.getElementById('precio-4').textContent = (precioHoraActual * 4).toFixed(2);
+                document.getElementById('precio-6').textContent = (precioHoraActual * 6).toFixed(2);
+                document.getElementById('precio-12').textContent = (precioHoraActual * 12).toFixed(2);
+            }
+        }
+
+        // Selección de horas predefinidas
+        document.querySelectorAll('.hora-option').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remover selección anterior
+                document.querySelectorAll('.hora-option').forEach(btn => {
+                    btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-700');
+                });
+                
+                // Seleccionar actual
+                this.classList.add('selected', 'bg-indigo-600', 'text-white');
+                this.classList.remove('bg-white', 'text-gray-700');
+                
+                // Actualizar campo oculto
+                horasSeleccionadas = this.getAttribute('data-hours');
+                document.getElementById('horas_reservadas').value = horasSeleccionadas;
+                
+                // Limpiar campo personalizado
+                document.getElementById('horas_personalizadas').value = '';
+                
+                verificarFormularioCompleto();
+            });
+        });
+
+        // Horas personalizadas
+        document.getElementById('btn-aplicar-personalizado').addEventListener('click', function() {
+            const horasPersonalizadas = document.getElementById('horas_personalizadas').value;
+            if (horasPersonalizadas && horasPersonalizadas > 0) {
+                // Remover selección de botones
+                document.querySelectorAll('.hora-option').forEach(btn => {
+                    btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-700');
+                });
+                
+                // Usar horas personalizadas
+                horasSeleccionadas = horasPersonalizadas;
+                document.getElementById('horas_reservadas').value = horasSeleccionadas;
+                
+                verificarFormularioCompleto();
+            } else {
+                alert('Ingrese un número válido de horas');
+            }
+        });
+
+        // Botón para leer placas (simulación)
+        document.getElementById('btn-leer-placas').addEventListener('click', function() {
+            // En una implementación real, aquí se integraría con la API de cámaras
+            alert('Función de lectura de placas con cámara - Para implementar con hardware específico');
+            
+            // Simulación: generar una placa aleatoria
+            const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const numeros = '0123456789';
+            let placaSimulada = '';
+            
+            for (let i = 0; i < 3; i++) {
+                placaSimulada += letras.charAt(Math.floor(Math.random() * letras.length));
+            }
+            placaSimulada += '-';
+            for (let i = 0; i < 3; i++) {
+                placaSimulada += numeros.charAt(Math.floor(Math.random() * numeros.length));
+            }
+            
+            document.getElementById('placas').value = placaSimulada;
+        });
+
+        // Verificar si el formulario está completo para habilitar el botón
+        function verificarFormularioCompleto() {
+            const habitacionSeleccionada = document.getElementById('habitacion_id').value;
+            const horasSeleccionadas = document.getElementById('horas_reservadas').value;
+            const nombreCliente = document.getElementById('nombre_cliente').value;
+            const modoIngreso = document.querySelector('input[name="modo_ingreso"]:checked');
+            
+            const formularioCompleto = habitacionSeleccionada && 
+                                     horasSeleccionadas && 
+                                     nombreCliente && 
+                                     modoIngreso;
+            
+            document.getElementById('btn-checkin').disabled = !formularioCompleto;
+        }
+
+        // Escuchar cambios en los campos requeridos
+        document.getElementById('nombre_cliente').addEventListener('input', verificarFormularioCompleto);
+        document.querySelectorAll('input[name="modo_ingreso"]').forEach(radio => {
+            radio.addEventListener('change', verificarFormularioCompleto);
+        });
+
+        // Inicializar precios al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarPrecios();
+            verificarFormularioCompleto();
+        });
+    </script>
 </body>
 </html>
