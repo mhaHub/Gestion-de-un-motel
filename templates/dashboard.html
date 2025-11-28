@@ -45,6 +45,31 @@
             background-color: #f9fafb;
             cursor: not-allowed;
         }
+        
+        /* Estilos para el sistema de tiempo real */
+        @keyframes alertaSuave {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        @keyframes actualizacion {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .tiempo-extra-activo {
+            border-color: #ef4444 !important;
+        }
+        
+        .actualizando {
+            animation: actualizacion 0.5s ease;
+        }
+        
+        .habitacion-ocupada {
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -81,7 +106,7 @@
                         Dashboard
                     </a>
                 </li>
-                <!-- ✅ CORREGIDO: Eliminado enlace a reservas -->
+                <!-- CORREGIDO: Eliminado enlace a reservas -->
                 <li>
                     <a href="{{ url_for('checkin') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,7 +182,7 @@
                 {% endwith %}
             </div>
 
-            <!-- 🚀 TARJETAS DE RESUMEN DEL DÍA 🚀 -->
+            <!-- TARJETAS DE RESUMEN DEL DÍA -->
             <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <!-- Clientes del Día -->
                 <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-indigo-500">
@@ -184,7 +209,7 @@
                 </div>
             </div>
 
-            <!-- 📊 GRÁFICA PIE CON DATOS REALES -->
+            <!-- GRÁFICA PIE CON DATOS REALES -->
             <div class="w-full mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">Distribución de Habitaciones</h2>
@@ -203,7 +228,7 @@
                     {% for o in ocupadas %}
                     <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 
                                 {% if o.es_hora_extra %} border-red-500 {% else %} border-green-500 {% endif %} 
-                                transform hover:scale-[1.02] transition duration-300">
+                                transform hover:scale-[1.02] transition duration-300 habitacion-ocupada">
                         
                         <div class="flex justify-between items-start mb-4 border-b pb-2">
                             <h2 class="text-3xl font-extrabold text-gray-800">{{ o.numero }}</h2>
@@ -229,7 +254,7 @@
                             </p>
 
                             {% if o.es_hora_extra %}
-                                <p class="text-xs text-red-500 mt-1">
+                                <p class="horas-extra-info text-xs text-red-500 mt-1">
                                     {{ "%.2f"|format(o.horas_extra) }} horas de tiempo extra.
                                 </p>
                             {% endif %}
@@ -600,7 +625,201 @@
         });
     </script>
 
-    <!-- Script para los nuevos modales y funcionalidades -->
+    <!-- SISTEMA DE TIEMPO REAL MEJORADO -->
+    <script>
+        class TiempoRealManager {
+            constructor() {
+                this.intervalId = null;
+                this.estaActivo = false;
+                this.ultimaActualizacion = null;
+                this.init();
+            }
+
+            init() {
+                console.log('🕐 Iniciando sistema de tiempo real...');
+                this.iniciarTiempoReal();
+                
+                // También actualizar cuando la ventana gana foco
+                window.addEventListener('focus', () => {
+                    if (!this.estaActivo) {
+                        this.iniciarTiempoReal();
+                    }
+                });
+
+                // Pausar cuando la ventana pierde foco para ahorrar recursos
+                window.addEventListener('blur', () => {
+                    // No pausamos completamente, pero reducimos frecuencia
+                    if (this.intervalId) {
+                        clearInterval(this.intervalId);
+                        this.intervalId = setInterval(() => this.actualizarTodasHabitaciones(), 60000); // 1 minuto
+                    }
+                });
+            }
+
+            iniciarTiempoReal() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                }
+
+                // Actualización inmediata al cargar
+                this.actualizarTodasHabitaciones();
+                
+                // Actualizar cada 30 segundos
+                this.intervalId = setInterval(() => {
+                    this.actualizarTodasHabitaciones();
+                }, 30000);
+
+                this.estaActivo = true;
+                console.log('✅ Sistema de tiempo real activado');
+            }
+
+            async actualizarTodasHabitaciones() {
+                const habitaciones = document.querySelectorAll('[id^="tiempo-"]');
+                
+                if (habitaciones.length === 0) return;
+
+                console.log(`🔄 Actualizando ${habitaciones.length} habitaciones...`);
+                
+                const promesas = Array.from(habitaciones).map(element => 
+                    this.actualizarHabitacion(element)
+                );
+
+                await Promise.allSettled(promesas);
+                this.ultimaActualizacion = new Date();
+            }
+
+            async actualizarHabitacion(element) {
+                const rentaId = element.id.split('-')[1];
+                
+                try {
+                    const response = await fetch(`/api/tiempo_restante/${rentaId}`);
+                    const data = await response.json();
+
+                    if (data.error) {
+                        console.error(`Error en habitación ${rentaId}:`, data.error);
+                        return;
+                    }
+
+                    this.aplicarCambiosVisuales(element, data);
+                    
+                } catch (error) {
+                    console.error(`Error al actualizar habitación ${rentaId}:`, error);
+                }
+            }
+
+            aplicarCambiosVisuales(element, data) {
+                const tarjeta = element.closest('.bg-white');
+                const borde = tarjeta.querySelector('.border-l-4');
+                const tiempoTexto = element;
+                const horasExtraElement = tarjeta.querySelector('.horas-extra-info');
+
+                // Actualizar texto del tiempo
+                tiempoTexto.textContent = `Tiempo Restante: ${data.tiempo_restante}`;
+
+                // Manejar estado de tiempo extra
+                if (data.es_hora_extra) {
+                    this.marcarComoTiempoExtra(tarjeta, borde, tiempoTexto, data.horas_extra, horasExtraElement);
+                } else {
+                    this.marcarComoTiempoNormal(tarjeta, borde, tiempoTexto, horasExtraElement);
+                }
+
+                // Agregar efecto visual suave
+                this.agregarEfectoActualizacion(tiempoTexto);
+            }
+
+            marcarComoTiempoExtra(tarjeta, borde, tiempoTexto, horasExtra, horasExtraElement) {
+                // Cambiar a estilo de tiempo extra
+                borde.classList.remove('border-green-500', 'border-yellow-500');
+                borde.classList.add('border-red-500');
+                
+                tiempoTexto.classList.remove('text-green-600', 'text-yellow-600');
+                tiempoTexto.classList.add('text-red-600');
+
+                // Mostrar información de horas extra
+                if (horasExtraElement) {
+                    horasExtraElement.textContent = `${horasExtra.toFixed(2)} horas de tiempo extra.`;
+                } else {
+                    this.crearElementoHorasExtra(tarjeta, horasExtra);
+                }
+
+                // Efecto de alerta para tiempo extra
+                this.activarAlertaTiempoExtra(tarjeta);
+            }
+
+            marcarComoTiempoNormal(tarjeta, borde, tiempoTexto, horasExtraElement) {
+                // Restaurar estilo normal
+                borde.classList.remove('border-red-500', 'border-yellow-500');
+                borde.classList.add('border-green-500');
+                
+                tiempoTexto.classList.remove('text-red-600', 'text-yellow-600');
+                tiempoTexto.classList.add('text-green-600');
+
+                // Remover elemento de horas extra si existe
+                if (horasExtraElement) {
+                    horasExtraElement.remove();
+                }
+
+                // Remover efectos de alerta
+                this.desactivarAlertaTiempoExtra(tarjeta);
+            }
+
+            crearElementoHorasExtra(tarjeta, horasExtra) {
+                const horasExtraElement = document.createElement('p');
+                horasExtraElement.className = 'horas-extra-info text-xs text-red-500 mt-1';
+                horasExtraElement.textContent = `${horasExtra.toFixed(2)} horas de tiempo extra.`;
+                
+                const contenedorTiempo = tarjeta.querySelector('.border-t');
+                contenedorTiempo.appendChild(horasExtraElement);
+            }
+
+            activarAlertaTiempoExtra(tarjeta) {
+                tarjeta.classList.add('tiempo-extra-activo');
+                
+                // Efecto de parpadeo suave
+                if (!tarjeta.style.animation) {
+                    tarjeta.style.animation = 'alertaSuave 2s infinite';
+                }
+            }
+
+            desactivarAlertaTiempoExtra(tarjeta) {
+                tarjeta.classList.remove('tiempo-extra-activo');
+                tarjeta.style.animation = '';
+            }
+
+            agregarEfectoActualizacion(elemento) {
+                // Efecto visual sutil de actualización
+                elemento.style.transition = 'all 0.5s ease';
+                elemento.classList.add('actualizando');
+                
+                setTimeout(() => {
+                    elemento.classList.remove('actualizando');
+                }, 500);
+            }
+
+            detener() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                    this.estaActivo = false;
+                    console.log('⏹️ Sistema de tiempo real detenido');
+                }
+            }
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            window.tiempoRealManager = new TiempoRealManager();
+            
+            // También manejar el evento de visibilidad de la página
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden && !window.tiempoRealManager.estaActivo) {
+                    window.tiempoRealManager.iniciarTiempoReal();
+                }
+            });
+        });
+    </script>
+
+    <!-- Script para los modales y funcionalidades -->
     <script>
         // Funciones para el modal del checklist
         function abrirChecklist(rentaId, habitacionNumero) {
@@ -703,19 +922,6 @@
         function cerrarCancelacionModal() {
             document.getElementById('cancelacionModal').classList.add('hidden');
         }
-
-        // Actualizar tiempos cada minuto (simulación - en producción harías llamadas AJAX)
-        function actualizarTiempos() {
-            // En una implementación real, harías llamadas AJAX para actualizar los tiempos
-            // Por ahora solo es una simulación
-            console.log('Actualizando tiempos...');
-        }
-
-        // Actualizar cada minuto
-        setInterval(actualizarTiempos, 60000);
-
-        // También actualizar cuando la ventana gana foco
-        window.addEventListener('focus', actualizarTiempos);
     </script>
 </body>
 </html>
