@@ -48,3 +48,6 @@ def load_initial_rooms(db):
         print(f"Se cargaron 10 habitaciones: 8 Normales y 2 Jacuzzi.")
     else:
         print("La base de datos ya contiene habitaciones. No se cargaron datos iniciales.")
+
+
+

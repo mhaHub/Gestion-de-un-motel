@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reportes Globales - Halftime Inn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Panel de Control Global</h1>
+            <p class="text-gray-600">Administrador General: Visión completa de la cadena</p>
+            <p class="text-sm text-blue-600 mt-1">
+                <i class="fas fa-user mr-1"></i> {{ current_user.username }} | 
+                <i class="fas fa-calendar-alt mr-1 ml-2"></i> {{ fecha_actual }}
+            </p>
+        </header>
+
+        <!-- FILTROS GENERALES -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2 text-gray-700">
+                <i class="fas fa-filter mr-2"></i> Filtros de Reportes
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-day mr-1"></i> Fecha Inicial
+                    </label>
+                    <input type="date" id="fecha_inicio" class="w-full p-2 border rounded-lg" 
+                           value="{{ fecha_inicio_default }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-day mr-1"></i> Fecha Final
+                    </label>
+                    <input type="date" id="fecha_fin" class="w-full p-2 border rounded-lg" 
+                           value="{{ fecha_fin_default }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-hotel mr-1"></i> Sucursal
+                    </label>
+                    <select id="sucursal_id" class="w-full p-2 border rounded-lg">
+                        <option value="0">Todas las Sucursales</option>
+                        {% for s in todas_sucursales %}
+                        <option value="{{ s.get('id', 0) }}">{{ s.get('nombre', 'Sin nombre') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-3">
+                <button onclick="aplicarFiltros()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    <i class="fas fa-search mr-2"></i> Aplicar Filtros
+                </button>
+                <button onclick="resetearFiltros()" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition">
+                    <i class="fas fa-redo mr-2"></i> Restablecer
+                </button>
+            </div>
+        </div>
+
+        <!-- TARJETAS DE NAVEGACIÓN -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div onclick="toggleReporte('rep_sucursales')" class="cursor-pointer bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition border-l-4 border-blue-500">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-full text-blue-600"><i class="fas fa-hotel fa-2x"></i></div>
+                    <div class="ml-4">
+                        <h3 class="font-bold text-gray-700">Sucursales</h3>
+                        <p class="text-sm text-gray-500">Comparativo de rendimiento</p>
+                        <div class="mt-2">
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {{ sucursales|length }} sucursales
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div onclick="toggleReporte('rep_finanzas')" class="cursor-pointer bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition border-l-4 border-green-500">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-full text-green-600"><i class="fas fa-chart-line fa-2x"></i></div>
+                    <div class="ml-4">
+                        <h3 class="font-bold text-gray-700">Finanzas</h3>
+                        <p class="text-sm text-gray-500">Ingresos consolidados</p>
+                        <div class="mt-2">
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                ${{ "{:,.2f}".format(finanzas.get('total', 0) if finanzas else 0) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div onclick="toggleReporte('rep_habitaciones')" class="cursor-pointer bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition border-l-4 border-purple-500">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-full text-purple-600"><i class="fas fa-bed fa-2x"></i></div>
+                    <div class="ml-4">
+                        <h3 class="font-bold text-gray-700">Habitaciones</h3>
+                        <p class="text-sm text-gray-500">Popularidad por categorías</p>
+                        <div class="mt-2">
+                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                {{ habitaciones|length }} tipos
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR DE REPORTES -->
+        <div id="reportes_container">
+            <!-- REPORTE DE SUCURSALES -->
+            <div id="rep_sucursales" class="bg-white p-6 rounded-xl shadow-md mb-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-bold text-blue-600">Comparativo por Sucursal</h2>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-1"></i> 
+                        {% if fecha_inicio_default and fecha_fin_default %}
+                            {{ fecha_inicio_default }} al {{ fecha_fin_default }}
+                        {% else %}
+                            Período actual
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if sucursales %}
+                <div class="mb-6 h-80">
+                    <canvas id="chartSucursales"></canvas>
+                </div>
+                
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-gray-400 border-b">
+                            <th class="py-2">Sucursal</th>
+                            <th>Total Rentas</th>
+                            <th>Ingresos Acumulados</th>
+                            <th>Promedio por Renta</th>
+                            <th>Habitaciones Ocupadas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in sucursales %}
+                        <tr class="border-b hover:bg-gray-50 transition">
+                            <td class="py-3 font-semibold text-gray-700">
+                                <i class="fas fa-hotel text-blue-500 mr-2"></i>{{ s.get('nombre', 'Sin nombre') }}
+                            </td>
+                            <td class="text-center">{{ s.get('total_rentas', 0) }}</td>
+                            <td class="text-green-600 font-bold">${{ "{:,.2f}".format(s.get('total', 0)) }}</td>
+                            <td class="text-blue-600">${{ "{:,.2f}".format(s.get('promedio_renta', 0)) }}</td>
+                            <td class="text-center">
+                                <span class="px-2 py-1 rounded text-xs 
+                                    {% if s.get('ocupadas', 0) > 10 %}bg-green-100 text-green-800
+                                    {% elif s.get('ocupadas', 0) > 5 %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ s.get('ocupadas', 0) }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="bg-gray-50 font-bold">
+                            <td class="py-3">TOTALES</td>
+                            <td class="text-center">{{ total_rentas }}</td>
+                            <td class="text-green-700">${{ "{:,.2f}".format(total_ingresos) }}</td>
+                            <td class="text-blue-700">${{ "{:,.2f}".format(promedio_global) }}</td>
+                            <td class="text-center">{{ total_ocupadas }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-hotel text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No hay datos de sucursales para el período seleccionado</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- REPORTE FINANCIERO -->
+            <div id="rep_finanzas" class="hidden bg-white p-6 rounded-xl shadow-md mb-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-bold text-green-600">Resumen Financiero Global</h2>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-1"></i> 
+                        {% if fecha_inicio_default and fecha_fin_default %}
+                            {{ fecha_inicio_default }} al {{ fecha_fin_default }}
+                        {% else %}
+                            Período actual
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-green-50 p-4 rounded-lg text-center">
+                        <p class="text-green-700 font-bold uppercase text-sm tracking-widest">Ingresos Totales</p>
+                        <p class="text-3xl font-black text-green-600">${{ "{:,.2f}".format(finanzas.get('total', 0) if finanzas else 0) }}</p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg text-center">
+                        <p class="text-blue-700 font-bold uppercase text-sm tracking-widest">Total Rentas</p>
+                        <p class="text-3xl font-black text-blue-600">{{ finanzas.get('total_rentas', 0) if finanzas else 0 }}</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg text-center">
+                        <p class="text-purple-700 font-bold uppercase text-sm tracking-widest">Promedio/Renta</p>
+                        <p class="text-3xl font-black text-purple-600">${{ "{:,.2f}".format(finanzas.get('promedio_renta', 0) if finanzas else 0) }}</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                        <p class="text-yellow-700 font-bold uppercase text-sm tracking-widest">Días Analizados</p>
+                        <p class="text-3xl font-black text-yellow-600">{{ finanzas.get('dias_analizados', 0) if finanzas else 0 }}</p>
+                    </div>
+                </div>
+                
+                {% if sucursales and finanzas.get('total', 0) > 0 %}
+                <div class="mb-6 h-64">
+                    <canvas id="chartFinanzas"></canvas>
+                </div>
+                
+                <!-- DESGLOSE POR SUCURSAL -->
+                <h3 class="text-lg font-bold mb-4 text-gray-700">
+                    <i class="fas fa-chart-pie mr-2"></i> Desglose por Sucursal
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-gray-400 border-b">
+                                <th class="py-2">Sucursal</th>
+                                <th>Ingresos</th>
+                                <th>% del Total</th>
+                                <th>Rentas</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in sucursales %}
+                            {% set total_sucursal = s.get('total', 0) %}
+                            {% set porcentaje = (total_sucursal / finanzas.get('total', 1) * 100) if finanzas.get('total', 0) > 0 else 0 %}
+                            <tr class="border-b hover:bg-gray-50 transition">
+                                <td class="py-3 font-semibold text-gray-700">{{ s.get('nombre', 'Sin nombre') }}</td>
+                                <td class="text-green-600 font-bold">${{ "{:,.2f}".format(total_sucursal) }}</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                            <div class="bg-green-600 h-2.5 rounded-full" 
+                                                 style="width: {{ porcentaje }}%"></div>
+                                        </div>
+                                        <span class="text-sm">{{ "%.1f"|format(porcentaje) }}%</span>
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ s.get('total_rentas', 0) }}</td>
+                                <td>
+                                    <span class="px-2 py-1 rounded text-xs 
+                                        {% if porcentaje > 40 %}bg-green-100 text-green-800
+                                        {% elif porcentaje > 20 %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-red-100 text-red-800{% endif %}">
+                                        {% if porcentaje > 40 %}Alto
+                                        {% elif porcentaje > 20 %}Medio
+                                        {% else %}Bajo{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No hay datos financieros para el período seleccionado</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- REPORTE DE HABITACIONES -->
+            <div id="rep_habitaciones" class="hidden bg-white p-6 rounded-xl shadow-md mb-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-bold text-purple-600">Análisis de Habitaciones</h2>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-calendar-alt mr-1"></i> 
+                        {% if fecha_inicio_default and fecha_fin_default %}
+                            {{ fecha_inicio_default }} al {{ fecha_fin_default }}
+                        {% else %}
+                            Período actual
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if habitaciones %}
+                <div class="mb-6 h-64">
+                    <canvas id="chartHabitaciones"></canvas>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- TIPOS MÁS RENTADOS -->
+                    <div>
+                        <h3 class="text-lg font-bold mb-4 text-purple-600">
+                            <i class="fas fa-star mr-2"></i> Tipos Más Rentados
+                        </h3>
+                        <div class="space-y-3">
+                            {% for h in habitaciones %}
+                            <div class="border rounded-lg p-3 hover:bg-purple-50 transition">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">{{ h.get('tipo', 'Sin tipo') }}</span>
+                                    <span class="text-purple-600 font-bold">{{ h.get('veces_rentada', 0) }} rentas</span>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-600">
+                                    <div class="flex justify-between">
+                                        <span>Horas totales:</span>
+                                        <span class="font-medium">{{ h.get('horas_totales', 0) }} hrs</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Ingresos generados:</span>
+                                        <span class="font-medium text-green-600">${{ "{:,.2f}".format(h.get('generado', 0)) }}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        {% set max_rentas = habitaciones[0].get('veces_rentada', 1) if habitaciones else 1 %}
+                                        {% set veces_rentada = h.get('veces_rentada', 0) %}
+                                        {% set porcentaje = (veces_rentada / max_rentas * 100) if max_rentas > 0 else 0 %}
+                                        <div class="bg-purple-600 h-2 rounded-full" 
+                                             style="width: {{ porcentaje }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- ESTADÍSTICAS POR SUCURSAL -->
+                    <div>
+                        <h3 class="text-lg font-bold mb-4 text-blue-600">
+                            <i class="fas fa-hotel mr-2"></i> Estado por Sucursal
+                        </h3>
+                        <div class="space-y-3">
+                            {% for s in sucursales %}
+                            <div class="border rounded-lg p-3 hover:bg-blue-50 transition">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">{{ s.get('nombre', 'Sin nombre') }}</span>
+                                    <span class="text-blue-600 font-bold">{{ s.get('ocupadas', 0) }} ocupadas</span>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-600">
+                                    <div class="flex justify-between">
+                                        <span>Disponibles:</span>
+                                        <span class="font-medium text-green-600">{{ s.get('disponibles', 0) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Ocupadas:</span>
+                                        <span class="font-medium text-red-600">{{ s.get('ocupadas', 0) }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>En limpieza:</span>
+                                        <span class="font-medium text-orange-600">{{ s.get('limpieza', 0) }}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    {% set total_hab = (s.get('disponibles', 0) + s.get('ocupadas', 0) + s.get('limpieza', 0)) %}
+                                    {% if total_hab > 0 %}
+                                    <div class="flex h-2 rounded-full overflow-hidden">
+                                        <div class="bg-green-500" style="width: {{ (s.get('disponibles', 0) / total_hab * 100) }}%"></div>
+                                        <div class="bg-red-500" style="width: {{ (s.get('ocupadas', 0) / total_hab * 100) }}%"></div>
+                                        <div class="bg-orange-500" style="width: {{ (s.get('limpieza', 0) / total_hab * 100) }}%"></div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="fas fa-bed text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No hay datos de habitaciones para el período seleccionado</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- BOTÓN PARA VOLVER -->
+        <div class="mt-6">
+            <a href="{{ url_for('dashboard') }}" class="inline-flex items-center text-indigo-600 font-bold hover:underline">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales para gráficos
+        let chartSucursales, chartFinanzas, chartHabitaciones;
+        
+        // Inicializar página
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            setupEventListeners();
+            // Mostrar reporte de sucursales por defecto
+            toggleReporte('rep_sucursales');
+            
+            // Establecer sucursal seleccionada si hay filtro aplicado
+            const urlParams = new URLSearchParams(window.location.search);
+            const sucursalId = urlParams.get('sucursal_id');
+            if (sucursalId) {
+                document.getElementById('sucursal_id').value = sucursalId;
+            }
+        });
+        
+        // Inicializar gráficos
+        function initCharts() {
+            // Gráfico de sucursales
+            const ctx1 = document.getElementById('chartSucursales');
+            if (ctx1 && {{ sucursales|length }} > 0) {
+                chartSucursales = new Chart(ctx1.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: [
+                            {% for s in sucursales %}
+                            '{{ s.get('nombre', 'Sin nombre')[:15] }}{% if s.get('nombre', '')|length > 15 %}...{% endif %}',
+                            {% endfor %}
+                        ],
+                        datasets: [{
+                            label: 'Ingresos ($)',
+                            data: [
+                                {% for s in sucursales %}
+                                {{ s.get('total', 0) }},
+                                {% endfor %}
+                            ],
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfico de finanzas (torta)
+            const ctx2 = document.getElementById('chartFinanzas');
+            if (ctx2 && {{ sucursales|length }} > 0 && {{ finanzas.get('total', 0) }} > 0) {
+                chartFinanzas = new Chart(ctx2.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: [
+                            {% for s in sucursales %}
+                            '{{ s.get('nombre', 'Sin nombre')[:10] }}{% if s.get('nombre', '')|length > 10 %}...{% endif %}',
+                            {% endfor %}
+                        ],
+                        datasets: [{
+                            data: [
+                                {% for s in sucursales %}
+                                {{ s.get('total', 0) }},
+                                {% endfor %}
+                            ],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(201, 203, 207, 0.7)',
+                                'rgba(255, 205, 86, 0.7)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfico de habitaciones
+            const ctx3 = document.getElementById('chartHabitaciones');
+            if (ctx3 && {{ habitaciones|length }} > 0) {
+                chartHabitaciones = new Chart(ctx3.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: [
+                            {% for h in habitaciones %}
+                            '{{ h.get('tipo', 'Sin tipo') }}',
+                            {% endfor %}
+                        ],
+                        datasets: [{
+                            label: 'Veces Rentada',
+                            data: [
+                                {% for h in habitaciones %}
+                                {{ h.get('veces_rentada', 0) }},
+                                {% endfor %}
+                            ],
+                            backgroundColor: 'rgba(147, 51, 234, 0.5)',
+                            borderColor: 'rgb(147, 51, 234)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Configurar eventos
+        function setupEventListeners() {
+            // Fecha fin no puede ser menor que fecha inicio
+            document.getElementById('fecha_inicio').addEventListener('change', function() {
+                const fechaFin = document.getElementById('fecha_fin');
+                if (fechaFin.value && fechaFin.value < this.value) {
+                    fechaFin.value = this.value;
+                }
+            });
+        }
+        
+        // Cambiar entre reportes
+        function toggleReporte(id) {
+            document.querySelectorAll('#reportes_container > div').forEach(div => {
+                div.classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+        
+        // Aplicar filtros
+        function aplicarFiltros() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const fechaFin = document.getElementById('fecha_fin').value;
+            const sucursalId = document.getElementById('sucursal_id').value;
+            
+            // Validar fechas
+            if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+                alert('La fecha de inicio no puede ser mayor a la fecha final');
+                return;
+            }
+            
+            // Construir URL con parámetros
+            let url = window.location.pathname + '?';
+            if (fechaInicio) url += `fecha_inicio=${fechaInicio}&`;
+            if (fechaFin) url += `fecha_fin=${fechaFin}&`;
+            if (sucursalId && sucursalId !== '0') url += `sucursal_id=${sucursalId}`;
+            
+            // Recargar página con filtros
+            window.location.href = url;
+        }
+        
+        // Resetear filtros
+        function resetearFiltros() {
+            document.getElementById('fecha_inicio').value = '';
+            document.getElementById('fecha_fin').value = '';
+            document.getElementById('sucursal_id').value = '0';
+            window.location.href = window.location.pathname;
+        }
+    </script>
+</body>
+</html>

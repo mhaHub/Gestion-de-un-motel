@@ -6,6 +6,7 @@
     <title>Dashboard - Control de Habitaciones</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -35,99 +36,192 @@
             width: 100% !important;
             height: 256px !important;
         }
-        .concepto-item {
-            transition: all 0.3s ease;
-        }
-        .concepto-item.disabled {
-            opacity: 0.5;
-        }
-        .concepto-input:disabled {
-            background-color: #f9fafb;
-            cursor: not-allowed;
+        
+        /* Animaciones para limpieza */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
         
-        /* Estilos para el sistema de tiempo real */
-        @keyframes alertaSuave {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .limpieza-activa {
+            animation: pulse 2s infinite;
         }
         
-        @keyframes actualizacion {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
+        /* ===== SISTEMA DE MENSAJES FLASH ===== */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
         
-        .tiempo-extra-activo {
-            border-color: #ef4444 !important;
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
         }
         
-        .actualizando {
-            animation: actualizacion 0.5s ease;
+        .toast-enter {
+            animation: slideInRight 0.5s ease-out;
         }
         
-        .habitacion-ocupada {
-            transition: all 0.3s ease;
+        .toast-exit {
+            animation: fadeOut 0.5s ease-out forwards;
         }
     </style>
 </head>
 <body class="bg-gray-100">
 
+    <!-- ===== CONTENEDOR DE MENSAJES FLASH ===== -->
+    <div class="fixed top-4 right-4 z-50 space-y-3 max-w-md" id="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div 
+                        id="flash-{{ loop.index }}"
+                        class="flash-toast rounded-lg shadow-xl p-4 border-l-4 flex items-center justify-between animate-slideInRight"
+                        data-category="{{ category }}"
+                        data-auto-remove="true">
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono -->
+                            <div class="flash-icon flex-shrink-0">
+                                {% if category == 'success' %}
+                                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% elif category == 'error' %}
+                                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% elif category == 'warning' %}
+                                    <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                    </svg>
+                                {% else %}
+                                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            <!-- Mensaje -->
+                            <div>
+                                <p class="text-sm font-medium">{{ message }}</p>
+                            </div>
+                        </div>
+                        <!-- Botón para cerrar -->
+                        <button onclick="closeToast(this)" class="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0 focus:outline-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col z-40">
         <!-- Header -->
         <div class="p-4 flex items-center gap-3 border-b border-gray-200">
-            <div class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">D</div>
+            <div class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">H</div>
             <div>
-                <h2 class="text-lg font-semibold text-gray-800">Dashboard</h2>
-                <p class="text-sm text-gray-500">Control de Habitaciones</p>
+                <h2 class="text-lg font-semibold text-gray-800">Halftime Inn</h2>
+                <p class="text-sm text-gray-500">
+                    {% if current_user.rol == 'RECEPCIONISTA' %}
+                        Módulo Recepción
+                    {% else %}
+                        Módulo Administración
+                    {% endif %}
+                </p>
             </div>
         </div>
 
-        <!-- Usuario -->
+        <!-- Información del Usuario -->
         <div class="flex items-center gap-3 p-4 border-b border-gray-100">
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="w-10 h-10 rounded-full" alt="Usuario">
+            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">
+                <i class="fas fa-user"></i>
+            </div>
             <div>
-                <p class="font-semibold text-gray-800">{{ session.get('usuario', 'Invitado') }}</p>
-                <p class="text-xs text-gray-500">Administrador</p>
+                <p class="font-semibold text-gray-800">{{ current_user.username }}</p>
+                <p class="text-xs text-gray-500">
+                    {{ current_user.rol }}
+                    {% if current_user.sucursal_id %}
+                        | Sucursal {{ current_user.sucursal_id }}
+                    {% endif %}
+                    {% if current_user.turno %}
+                        | Turno {{ current_user.turno }}
+                    {% endif %}
+                </p>
             </div>
         </div>
-
         
-        <!-- Menú -->
+        <!-- Menú PRINCIPAL -->
         <nav class="flex-1 overflow-y-auto p-3">
             <ul class="space-y-1 text-sm">
                 <li>
-                    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M4 10v10h16V10" />
-                        </svg>
+                    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-bold">
+                        <i class="fas fa-home w-5"></i>
                         Dashboard
                     </a>
                 </li>
-                <!-- CORREGIDO: Eliminado enlace a reservas -->
+                
+                <!-- CHECK-IN (solo para recepcionistas) -->
+                {% if current_user.rol == 'RECEPCIONISTA' %}
                 <li>
-                    <a href="{{ url_for('checkin') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Nuevo Check-in
+                    <a href="{{ url_for('checkin') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 transition">
+                        <i class="fas fa-door-open w-5"></i>
+                        Check-in
                     </a>
                 </li>
+                
+                <!-- LIMPIEZA (solo recepcionistas) -->
                 <li>
-                    <a href="{{ url_for('reportes_rentas') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v2h6v-2m3 0h2v2h-2m-8 0H7v2h2m-3-6h12l-1.5-9h-9z" />
-                        </svg>
-                        Reportes y Estadísticas
+                    <a href="{{ url_for('limpieza') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition">
+                        <i class="fas fa-broom w-5"></i>
+                        Limpieza
                     </a>
                 </li>
-                <li>
-                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-red-100 hover:text-red-600 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-10V5" />
-                        </svg>
+                {% endif %}
+                
+                <!-- SECCIÓN DE ADMINISTRACIÓN (solo para admins) -->
+                {% if current_user.rol in ['ADMIN_GENERAL', 'ADMIN_MOTEL'] %}
+                <li class="pt-4 mt-4 border-t border-gray-100">
+                    <p class="px-3 text-xs font-bold text-gray-400 uppercase mb-2">Administración</p>
+                    
+                    
+                    <!-- REPORTES -->
+                    <a href="{% if current_user.rol == 'ADMIN_GENERAL' %}
+                                {{ url_for('reportes_general') }}
+                              {% elif current_user.rol == 'ADMIN_MOTEL' %}
+                                {{ url_for('reportes_sucursal') }}
+                              {% endif %}" 
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
+                        <i class="fas fa-chart-pie w-5"></i>
+                        Reportes
+                    </a>
+                    
+                    <!-- NUEVO USUARIO -->
+                    <a href="{{ url_for('registro_usuario') }}" 
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 transition">
+                        <i class="fas fa-user-plus w-5"></i>
+                        Nuevo Usuario
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Logout -->
+                <li class="mt-auto pt-4 border-t border-gray-100">
+                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+                        <i class="fas fa-sign-out-alt w-5"></i>
                         Cerrar Sesión
                     </a>
                 </li>
@@ -135,765 +229,625 @@
         </nav>
     </aside>
 
+    <!-- Botón móvil -->
+    <button id="menu-btn" class="lg:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-2 rounded-md shadow-md focus:outline-none">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <!-- Contenido principal -->
     <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 ml-0 lg:ml-64 transition-all duration-300" id="main-content">
         
-        <!-- Botón móvil -->
-        <button id="menu-btn" class="lg:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-2 rounded-md shadow-md focus:outline-none">
-            ☰
-        </button>
-
         <!-- Encabezado -->
-        <header class="w-full max-w-6xl mb-8 mt-12 lg:mt-0">
-            <div class="flex flex-col lg:flex-row justify-between items-center gap-4">
-                <div class="text-center lg:text-left">
-                    <h1 class="text-4xl font-bold text-gray-800">Control Operativo</h1>
-                    <p class="text-xl text-red-600 mt-1">Habitaciones Ocupadas</p>
+        <header class="w-full max-w-6xl mb-8 mt-12 lg:mt-6">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-start gap-6">
+                <!-- Columna IZQUIERDA: Título y mensaje -->
+                <div class="flex-1">
+                    <h1 class="text-3xl lg:text-4xl font-bold text-gray-800">
+                        {% if current_user.rol == 'RECEPCIONISTA' %}
+                            Panel de Recepción
+                        {% else %}
+                            Panel de Administración
+                        {% endif %}
+                    </h1>
+                    
+                    <!-- MENSAJE DE BIENVENIDA -->
+                    <div class="mt-2 mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-hand-wave"></i>
+                            </div>
+                            <div>
+                                <p class="text-lg text-blue-800 font-medium">
+                                    ¡Bienvenido, {{ current_user.username }}!
+                                </p>
+                                <p class="text-sm text-blue-600 mt-1">
+                                    <i class="fas fa-user-tag mr-1"></i>
+                                    {{ current_user.rol }}
+                                    {% if current_user.sucursal_id %}
+                                        | Sucursal {{ current_user.sucursal_id }}
+                                    {% endif %}
+                                    {% if current_user.turno %}
+                                        | Turno {{ current_user.turno }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Reloj -->
-                <div class="clock-container p-6 text-white min-w-[280px] text-center">
-                    <div id="fecha-actual" class="text-sm font-semibold uppercase tracking-wider mb-2">Cargando...</div>
-                    <div id="hora-actual" class="text-4xl font-bold">00:00:00</div>
-                    <div id="dia-semana" class="text-xs font-medium mt-2 opacity-80">...</div>
+                <!-- Columna DERECHA: Reloj + Botones -->
+                <div class="flex flex-col items-end gap-4 w-full lg:w-auto">
+                    <!-- Reloj -->
+                    <div class="clock-container p-5 text-white text-center w-full lg:w-auto min-w-[260px]">
+                        <div id="fecha-actual" class="text-sm font-semibold uppercase tracking-wider mb-2">Cargando...</div>
+                        <div id="hora-actual" class="text-4xl font-bold">00:00:00</div>
+                        <div id="dia-semana" class="text-sm font-medium mt-2 opacity-90">...</div>
+                    </div>
+                    
+                    <!-- BOTONES DE ACCIÓN DIFERENCIADOS POR ROL -->
+                    <div class="flex flex-row gap-3 justify-end w-full lg:w-auto">
+                        {% if current_user.rol == 'RECEPCIONISTA' %}
+                            
+                            <!-- Botón Reportes para recepcionistas -->
+                            <a href="{{ url_for('reportes_recepcion') }}" 
+                               class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                                <i class="fas fa-chart-pie mr-2 text-lg"></i>
+                                Reportes
+                            </a>
+                            
+                            <!-- Botón Limpieza para recepcionistas -->
+                            <a href="{{ url_for('limpieza') }}" 
+                               class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                                <i class="fas fa-broom mr-2 text-lg"></i>
+                                Limpieza
+                            </a>
+                            
+                        {% else %}
+                            <!-- Botón Nuevo Usuario para admins -->
+                            <a href="{{ url_for('registro_usuario') }}" 
+                               class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                                <i class="fas fa-user-plus mr-2 text-lg"></i>
+                                Nuevo Usuario
+                            </a>
+                            
+                            <!-- Botón Reportes para admins -->
+                            <a href="{% if current_user.rol == 'ADMIN_GENERAL' %}
+                                        {{ url_for('reportes_general') }}
+                                      {% elif current_user.rol == 'ADMIN_MOTEL' %}
+                                        {{ url_for('reportes_sucursal') }}
+                                      {% endif %}" 
+                               class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                                <i class="fas fa-chart-pie mr-2 text-lg"></i>
+                                Reportes
+                            </a>
+                            
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- Contenido del Dashboard -->
+        <!-- Resto del contenido del dashboard se mantiene igual -->
         <div class="w-full max-w-6xl">
-            <!-- Enlace a Check-in -->
-            <div class="w-full mb-6 flex justify-end">
-                <a href="{{ url_for('checkin') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
-                    + Nuevo Check-in
-                </a>
-            </div>
-
-            <!-- Flash Messages -->
-            <div class="w-full mb-4">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="p-3 mb-2 rounded-lg shadow-md text-sm {% if category == 'error' %}bg-red-500 text-white{% else %}bg-green-500 text-white{% endif %}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-            </div>
-
             <!-- TARJETAS DE RESUMEN DEL DÍA -->
             <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <!-- Clientes del Día -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-indigo-500">
-                    <p class="text-sm font-medium text-gray-500">Clientes Hoy</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1">{{ resumen.clientes_dia }}</p>
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Clientes Hoy</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.clientes_dia }}</p>
                 </div>
                 
                 <!-- Ingreso Inicial del Día -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-green-500">
-                    <p class="text-sm font-medium text-gray-500">Ingreso Inicial Hoy</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Ingresos Hoy</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
                 </div>
                 
-                <!-- Habitaciones Ocupadas (Actual) -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-red-500">
-                    <p class="text-sm font-medium text-gray-500">Habitaciones Ocupadas</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1">{{ resumen.ocupadas }} / {{ resumen.total_habitaciones }}</p>
+                <!-- Habitaciones Ocupadas -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-bed"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Ocupadas</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.ocupadas }}</p>
                 </div>
 
-                <!-- Horas Totales Rentadas -->
-                <div class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-yellow-500">
-                    <p class="text-sm font-medium text-gray-500">Horas Rentadas Hoy</p>
-                    <p class="text-2xl font-bold text-gray-800 mt-1">{{ resumen.horas_totales_dia }} h</p>
+                <!-- En Limpieza -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 {% if resumen.limpieza > 0 %}limpieza-activa{% endif %}">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-broom"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">En Limpieza</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.limpieza }}</p>
                 </div>
             </div>
 
-            <!-- GRÁFICA PIE CON DATOS REALES -->
+            <!-- GRÁFICA PIE -->
             <div class="w-full mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Distribución de Habitaciones</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-pie mr-3 text-indigo-600"></i>
+                        Distribución de Habitaciones
+                        {% if current_user.rol != 'ADMIN_GENERAL' %}
+                            - Sucursal {{ current_user.sucursal_id }}
+                        {% endif %}
+                    </h2>
                     <div class="h-64">
                         <canvas id="actividadChart"></canvas>
                     </div>
-                    <p class="text-sm text-gray-500 mt-2 text-center">
-                        Estado actual en tiempo real
-                    </p>
+                    <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+                        <div class="text-red-600 font-semibold">
+                            <i class="fas fa-bed mr-1"></i> Ocupadas: {{ resumen.ocupadas }}
+                        </div>
+                        <div class="text-green-600 font-semibold">
+                            <i class="fas fa-check-circle mr-1"></i> Disponibles: {{ resumen.disponibles }}
+                        </div>
+                        <div class="text-orange-600 font-semibold">
+                            <i class="fas fa-broom mr-1"></i> Limpieza: {{ resumen.limpieza }}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Habitaciones Ocupadas -->
-            {% if ocupadas %}
-                <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- HABITACIONES OCUPADAS -->
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-door-closed mr-3 text-red-600"></i>
+                    Habitaciones Ocupadas
+                    <span class="ml-2 text-sm bg-red-100 text-red-800 px-3 py-1 rounded-full">{{ ocupadas|length }} activas</span>
+                </h2>
+                
+                {% if ocupadas %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for o in ocupadas %}
-                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 
-                                {% if o.es_hora_extra %} border-red-500 {% else %} border-green-500 {% endif %} 
-                                transform hover:scale-[1.02] transition duration-300 habitacion-ocupada">
+                    {% set horas_int = o.horas_restantes|int %}
+                    {% set minutos = ((o.horas_restantes - horas_int) * 60)|round(0, 'floor')|int %}
+                    {% set tiempo_clase = 'bg-green-100 text-green-600' %}
+                    {% if o.horas_restantes <= 0.5 %}
+                        {% set tiempo_clase = 'bg-red-100 text-red-600' %}
+                    {% elif o.horas_restantes <= 2 %}
+                        {% set tiempo_clase = 'bg-yellow-100 text-yellow-600' %}
+                    {% endif %}
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-red-500 transform hover:scale-[1.02] transition duration-300 tarjeta-renta" 
+                         data-renta-id="{{ o.id }}">
                         
-                        <div class="flex justify-between items-start mb-4 border-b pb-2">
-                            <h2 class="text-3xl font-extrabold text-gray-800">{{ o.numero }}</h2>
-                            <span class="text-xs font-semibold px-3 py-1 rounded-full 
+                        <!-- Header de la habitación -->
+                        <div class="flex justify-between items-start mb-4 border-b pb-3">
+                            <div>
+                                <h2 class="text-3xl font-extrabold text-gray-800">#{{ o.numero }}</h2>
+                                <p class="text-sm text-gray-500">ID Renta: {{ o.id }}</p>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full 
                                          {% if o.tipo == 'JACUZZI' %} bg-yellow-100 text-yellow-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
                                 {{ o.tipo }}
                             </span>
                         </div>
 
-                        <div class="space-y-2 text-sm text-gray-600">
-                            <p><strong class="text-gray-800">Cliente:</strong> {{ o.cliente }}</p>
-                            <p><strong class="text-gray-800">Placas:</strong> <span class="font-mono text-xs bg-gray-200 px-1 py-0.5 rounded">{{ o.placas }}</span></p>
-                            <p><strong class="text-gray-800">Entrada:</strong> {{ o.entrada }}</p>
-                            <p><strong class="text-gray-800">Salida Est.:</strong> {{ o.salida_estimada }}</p>
-                        </div>
-
-                        <div class="mt-4 pt-4 border-t 
-                                    {% if o.es_hora_extra %} border-red-200 {% else %} border-green-200 {% endif %}">
-                            <p class="text-lg font-bold 
-                                      {% if o.es_hora_extra %} text-red-600 {% else %} text-green-600 {% endif %}"
-                               id="tiempo-{{ o.renta_id }}">
-                                Tiempo Restante: {{ o.tiempo_restante }}
-                            </p>
-
-                            {% if o.es_hora_extra %}
-                                <p class="horas-extra-info text-xs text-red-500 mt-1">
-                                    {{ "%.2f"|format(o.horas_extra) }} horas de tiempo extra.
-                                </p>
+                        <!-- Información de la renta -->
+                        <div class="space-y-3 text-sm text-gray-600 mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-user text-indigo-500 w-5 mr-2"></i>
+                                <span><strong>Cliente:</strong> {{ o.cliente }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-sign-in-alt text-green-500 w-5 mr-2"></i>
+                                <span><strong>Entrada:</strong> {{ o.entrada.strftime('%H:%M') if o.entrada else 'N/A' }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-sign-out-alt text-red-500 w-5 mr-2"></i>
+                                <span><strong>Salida Est.:</strong> {{ o.salida_estimada.strftime('%H:%M') if o.salida_estimada else 'N/A' }}</span>
+                            </div>
+                            {% if o.recepcionista %}
+                            <div class="flex items-center">
+                                <i class="fas fa-user-tie text-purple-500 w-5 mr-2"></i>
+                                <span><strong>Recepcionista:</strong> {{ o.recepcionista }}</span>
+                            </div>
                             {% endif %}
                         </div>
-                        
-                        <!-- Botones de acción MEJORADOS -->
-                        <div class="mt-4 flex space-x-2">
-                            <button onclick="abrirChecklist('{{ o.renta_id }}', '{{ o.numero }}')" 
-                                    class="flex-1 bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition duration-150 shadow-md">
-                                Check-out
-                            </button>
-                            <button onclick="abrirCancelacion('{{ o.renta_id }}')" 
-                                    class="px-3 bg-gray-500 text-white p-2 rounded-lg font-semibold hover:bg-gray-600 transition duration-150 shadow-md">
-                                Cancelar
-                            </button>
+
+                        <!-- Tiempo restante -->
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <p class="text-lg font-bold text-gray-800 mb-2">Tiempo Restante:</p>
+                            <div class="text-center py-3 rounded-lg {{ tiempo_clase }}" id="tiempo-bg-{{ o.id }}">
+                                <span class="text-2xl font-mono font-bold" id="tiempo-{{ o.id }}">
+                                    {% if o.horas_restantes > 0 %}
+                                        {{ horas_int }}h {{ minutos }}m
+                                    {% else %}
+                                        ¡Tiempo agotado!
+                                    {% endif %}
+                                </span>
+                                <p class="text-xs text-gray-600 mt-1">
+                                    {{ "%.1f"|format(o.horas_restantes) }} horas totales
+                                </p>
+                            </div>
                         </div>
+                        
+                        <!-- Botón de acción -->
+                        <button onclick="abrirCheckoutModal('{{ o.id }}', '{{ o.numero }}', '{{ o.cliente }}', '{{ o.entrada.strftime('%H:%M') if o.entrada else 'N/A' }}', '{{ o.salida_estimada.strftime('%H:%M') if o.salida_estimada else 'N/A' }}')" 
+                            class="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition-all duration-300 mt-4">
+                            Finalizar Renta
+                        </button>
                     </div>
                     {% endfor %}
                 </div>
-            {% else %}
-                <div class="w-full p-10 text-center bg-white rounded-xl shadow-lg">
+                {% else %}
+                <div class="w-full p-10 text-center bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200">
+                    <i class="fas fa-bed text-5xl text-gray-300 mb-4"></i>
                     <p class="text-2xl font-semibold text-gray-500">
-                        Todas las habitaciones están disponibles.
+                        No hay habitaciones ocupadas
                     </p>
-                    <p class="text-gray-400 mt-2">Inicia un Check-in para ver el movimiento operativo.</p>
+                    <p class="text-gray-400 mt-2">
+                        No hay ocupación activa en este momento.
+                    </p>
                 </div>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Modal Checklist Salida MEJORADO -->
-    <div id="checklistModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-bold mb-4">Checklist de Salida - Habitación <span id="modalHabitacionNumero"></span></h3>
-            
-            <form id="checklistForm" method="POST">
-                <input type="hidden" id="rentaId" name="renta_id">
+    <!-- MODAL PARA CHECKLIST DE SALIDA -->
+    <div id="checkoutModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Checklist de Salida</h2>
+                    <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <!-- Items del Checklist CON PRECIOS INDIVIDUALES -->
-                    <div class="space-y-4">
-                        <h4 class="font-semibold text-gray-700 border-b pb-2">Verificación de Habitación</h4>
-                        
-                        <!-- Concepto 1: Daños en habitación -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="danos_habitacion" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Daños en habitación</span>
-                                </label>
+                <form id="checkoutForm">
+                    <input type="hidden" id="renta_id" name="renta_id">
+                    
+                    <!-- INFORMACIÓN DE LA RENTA -->
+                    <div class="bg-indigo-50 p-4 rounded-lg mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Habitación</p>
+                                <p class="font-bold text-lg" id="habitacionNumero">#103</p>
                             </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Monto del cargo:</label>
-                                <input type="number" name="cargo_danos" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
+                            <div>
+                                <p class="text-sm text-gray-600">Cliente</p>
+                                <p class="font-bold" id="clienteNombre">Diego Rubio</p>
                             </div>
-                        </div>
-                        
-                        <!-- Concepto 2: Muebles dañados -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="muebles_danados" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Muebles dañados</span>
-                                </label>
+                            <div>
+                                <p class="text-sm text-gray-600">Entrada</p>
+                                <p class="font-bold" id="horaEntrada">22:06</p>
                             </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Monto del cargo:</label>
-                                <input type="number" name="cargo_muebles" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
-                            </div>
-                        </div>
-                        
-                        <!-- Concepto 3: Equipo dañado -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="equipo_danado" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Equipo dañado (TV, A/C)</span>
-                                </label>
-                            </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Monto del cargo:</label>
-                                <input type="number" name="cargo_equipo" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
-                            </div>
-                        </div>
-                        
-                        <!-- Concepto 4: Objetos olvidados -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="objetos_olvidados" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Objetos olvidados</span>
-                                </label>
-                            </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Monto del cargo:</label>
-                                <input type="number" name="cargo_objetos" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
-                            </div>
-                        </div>
-                        
-                        <!-- Concepto 5: Limpieza extra (checkbox + precio) -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="limpieza_extra" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Limpieza extra requerida</span>
-                                </label>
-                            </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Monto del cargo:</label>
-                                <input type="number" name="cargo_limpieza" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
+                            <div>
+                                <p class="text-sm text-gray-600">Salida</p>
+                                <p class="font-bold" id="horaSalidaEst">02:06</p>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Otros Cargos y Resumen -->
-                    <div class="space-y-4">
-                        <h4 class="font-semibold text-gray-700 border-b pb-2">Otros Cargos</h4>
+                    <!-- CHECKLIST DE VERIFICACIÓN -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Verificación de Habitación</h3>
                         
-                        <!-- Otros cargos (checkbox + precio) -->
-                        <div class="concepto-item border rounded-lg p-3 bg-gray-50">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="flex items-center space-x-3 flex-1">
-                                    <input type="checkbox" name="otros_cargos_check" class="rounded border-gray-300 concepto-checkbox">
-                                    <span class="text-sm font-medium">Otros cargos</span>
-                                </label>
+                        <div class="space-y-4">
+                            <!-- ITEM 1 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="danos_habitacion" name="danos_habitacion" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'danos_habitacion_monto')">
+                                <div class="flex-1">
+                                    <label for="danos_habitacion" class="font-medium">Daños en habitación</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="danos_habitacion_monto" name="danos_habitacion_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mt-2">
-                                <label class="block text-xs text-gray-600 mb-1">Descripción:</label>
-                                <input type="text" name="descripcion_otros" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="Descripción del cargo..." disabled>
-                                <label class="block text-xs text-gray-600 mb-1 mt-2">Monto:</label>
-                                <input type="number" name="otros_cargos" min="0" step="50" 
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm concepto-input" 
-                                       placeholder="0.00" disabled>
-                            </div>
-                        </div>
-                        
-                        <!-- Resumen de cargos -->
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <h5 class="font-semibold text-gray-800 mb-3 text-center">Resumen de Cargos</h5>
                             
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span>Daños en habitación:</span>
-                                    <span>$<span id="resumenDanos">0.00</span></span>
+                            <!-- ITEM 2 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="muebles_danados" name="muebles_danados" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'muebles_danados_monto')">
+                                <div class="flex-1">
+                                    <label for="muebles_danados" class="font-medium">Muebles dañados</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="muebles_danados_monto" name="muebles_danados_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span>Muebles dañados:</span>
-                                    <span>$<span id="resumenMuebles">0.00</span></span>
+                            </div>
+                            
+                            <!-- ITEM 3 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="equipo_danado" name="equipo_danado" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'equipo_danado_monto')">
+                                <div class="flex-1">
+                                    <label for="equipo_danado" class="font-medium">Equipo dañado (TV, A/C)</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="equipo_danado_monto" name="equipo_danado_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span>Equipo dañado:</span>
-                                    <span>$<span id="resumenEquipo">0.00</span></span>
+                            </div>
+                            
+                            <!-- ITEM 4 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="objetos_olvidados" name="objetos_olvidados" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'objetos_olvidados_monto')">
+                                <div class="flex-1">
+                                    <label for="objetos_olvidados" class="font-medium">Objetos olvidados</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="objetos_olvidados_monto" name="objetos_olvidados_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span>Objetos olvidados:</span>
-                                    <span>$<span id="resumenObjetos">0.00</span></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Limpieza extra:</span>
-                                    <span>$<span id="resumenLimpieza">0.00</span></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Otros cargos:</span>
-                                    <span>$<span id="resumenOtros">0.00</span></span>
-                                </div>
-                                <div class="border-t pt-2 mt-2">
-                                    <div class="flex justify-between font-bold text-lg">
-                                        <span>TOTAL:</span>
-                                        <span>$<span id="totalCargos">0.00</span></span>
+                            </div>
+                            
+                            <!-- ITEM 5 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="limpieza_extra" name="limpieza_extra" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'limpieza_extra_monto')">
+                                <div class="flex-1">
+                                    <label for="limpieza_extra" class="font-medium">Limpieza extra requerida</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="limpieza_extra_monto" name="limpieza_extra_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Observaciones -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones Generales</label>
-                    <textarea name="observaciones_generales" rows="3" 
-                              class="w-full border border-gray-300 rounded-md px-3 py-2" 
-                              placeholder="Detalles adicionales, comentarios, etc..."></textarea>
-                </div>
-                
-                <!-- Botones -->
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="cerrarModal()" 
-                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                        Confirmar Check-out
-                    </button>
-                </div>
-            </form>
+                    
+                    <!-- OBSERVACIONES -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Observaciones</h3>
+                        <textarea id="observaciones" name="observaciones" rows="4" 
+                                  class="w-full border rounded-lg p-3" 
+                                  placeholder="Notas adicionales sobre el estado de la habitación..."></textarea>
+                    </div>
+                    
+                    <!-- RESUMEN DE CARGOS -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700">Resumen de Cargos</h3>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="text-gray-600">Daños en habitación:</div>
+                            <div class="text-right font-bold" id="resumen_danos">$0.00</div>
+                            
+                            <div class="text-gray-600">Muebles dañados:</div>
+                            <div class="text-right font-bold" id="resumen_muebles">$0.00</div>
+                            
+                            <div class="text-gray-600">Equipo dañado:</div>
+                            <div class="text-right font-bold" id="resumen_equipo">$0.00</div>
+                            
+                            <div class="text-gray-600">Objetos olvidados:</div>
+                            <div class="text-right font-bold" id="resumen_objetos">$0.00</div>
+                            
+                            <div class="text-gray-600">Limpieza extra:</div>
+                            <div class="text-right font-bold" id="resumen_limpieza">$0.00</div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xl font-bold text-gray-800">TOTAL:</span>
+                                <span class="text-2xl font-bold text-red-600" id="total_cargos">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="flex gap-3 justify-end">
+                        <button type="button" onclick="cerrarModal()" 
+                                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="procesarCheckout()" 
+                                class="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                            Finalizar Renta
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Modal Cancelación -->
-    <div id="cancelacionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 class="text-xl font-bold mb-4 text-red-600">Cancelar Renta</h3>
-            
-            <form id="cancelacionForm" method="POST" action="{{ url_for('cancelar_renta') }}">
-                <input type="hidden" id="cancelRentaId" name="renta_id">
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Motivo de cancelación</label>
-                    <textarea name="motivo_cancelacion" rows="3" required
-                              class="w-full border border-gray-300 rounded-md px-3 py-2" 
-                              placeholder="Especifica el motivo de la cancelación..."></textarea>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Monto a devolver</label>
-                    <input type="number" name="monto_devolucion" min="0" step="0.01" required
-                           class="w-full border border-gray-300 rounded-md px-3 py-2" 
-                           placeholder="0.00">
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="cerrarCancelacionModal()" 
-                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                        Confirmar Cancelación
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- JS del reloj -->
     <script>
+        // Configuración
+        const TOAST_DURATION = 6000; // 6 segundos
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFlashMessages();
+            actualizarReloj();
+            setInterval(actualizarReloj, 1000);
+            setupMenu();
+            setupChart();
+        });
+        
+        // Sistema de mensajes flash
+        function setupFlashMessages() {
+            const toasts = document.querySelectorAll('.flash-toast[data-auto-remove="true"]');
+            
+            toasts.forEach((toast, index) => {
+                applyToastStyles(toast);
+                
+                setTimeout(() => {
+                    removeToast(toast);
+                }, TOAST_DURATION + (index * 100));
+            });
+        }
+        
+        function applyToastStyles(toast) {
+            const category = toast.dataset.category;
+            const styles = {
+                'success': { bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-800' },
+                'error': { bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-800' },
+                'warning': { bg: 'bg-yellow-50', border: 'border-yellow-500', text: 'text-yellow-800' },
+                'info': { bg: 'bg-blue-50', border: 'border-blue-500', text: 'text-blue-800' }
+            };
+            
+            const style = styles[category] || styles.info;
+            toast.classList.add(style.bg, style.border, style.text);
+        }
+        
+        function closeToast(button) {
+            const toast = button.closest('.flash-toast');
+            removeToast(toast);
+        }
+        
+        function removeToast(toast) {
+            if (!toast) return;
+            toast.classList.add('toast-exit');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 500);
+        }
+        
+        // Reloj en tiempo real
         function actualizarReloj() {
             const ahora = new Date();
             const horas = ahora.getHours().toString().padStart(2, '0');
             const minutos = ahora.getMinutes().toString().padStart(2, '0');
             const segundos = ahora.getSeconds().toString().padStart(2, '0');
             const horaCompleta = `${horas}:${minutos}:${segundos}`;
-            const fechaCompleta = ahora.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
+            const fechaCompleta = ahora.toLocaleDateString('es-ES', opcionesFecha);
             const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            
             document.getElementById('hora-actual').textContent = horaCompleta;
             document.getElementById('fecha-actual').textContent = fechaCompleta;
             document.getElementById('dia-semana').textContent = dias[ahora.getDay()];
         }
-        actualizarReloj();
-        setInterval(actualizarReloj, 1000);
-    </script>
-
-    <!-- JS del menú responsive -->
-    <script>
-        const menuBtn = document.getElementById('menu-btn');
-        const sidebar = document.getElementById('sidebar');
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('sidebar-hidden');
-        });
-    </script>
-
-    <!-- Script para la gráfica PIE con datos REALES -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("Iniciando carga de gráfica...");
-            
-            // DATOS REALES desde Flask
-            const datosReales = {
-                ocupadas: {{ resumen.ocupadas }},
-                disponibles: {{ resumen.disponibles }},
-                total: {{ resumen.total_habitaciones }}
-            };
-            
-            console.log("Datos recibidos:", datosReales);
-            
-            // Calcular habitaciones en limpieza
-            const limpieza = datosReales.total - datosReales.ocupadas - datosReales.disponibles;
-            console.log("Habitaciones en limpieza:", limpieza);
-            
-            // Verificar que el canvas existe
-            const canvas = document.getElementById('actividadChart');
-            if (!canvas) {
-                console.error("No se encontró el canvas 'actividadChart'");
-                return;
+        
+        // Menú responsive
+        function setupMenu() {
+            const menuBtn = document.getElementById('menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            if (menuBtn && sidebar) {
+                menuBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('sidebar-hidden');
+                });
             }
-            console.log("Canvas encontrado");
-            
-            const ctx = canvas.getContext('2d');
-            
-            // Crear la gráfica
-            const actividadChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: [
-                        'Ocupadas', 
-                        'Disponibles', 
-                        'En Limpieza'
-                    ],
-                    datasets: [{
-                        data: [
-                            datosReales.ocupadas,
-                            datosReales.disponibles, 
-                            Math.max(0, limpieza) // Evitar números negativos
-                        ],
-                        backgroundColor: [
-                            'rgba(239, 68, 68, 0.8)',    // Rojo - Ocupadas
-                            'rgba(34, 197, 94, 0.8)',    // Verde - Disponibles  
-                            'rgba(245, 158, 11, 0.8)'    // Amarillo - Limpieza
-                        ],
-                        borderColor: [
-                            'rgba(239, 68, 68, 1)',
-                            'rgba(34, 197, 94, 1)',
-                            'rgba(245, 158, 11, 1)'
-                        ],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Estado REAL de Habitaciones',
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 15,
-                                usePointStyle: true,
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.raw || 0;
-                                    const total = datosReales.total;
-                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                    return `${label}: ${value} habitaciones (${percentage}%)`;
-                                }
+        }
+        
+        // Gráfica
+        function setupChart() {
+            const ctx = document.getElementById('actividadChart');
+            if (ctx) {
+                new Chart(ctx.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['Ocupadas', 'Disponibles', 'Limpieza'],
+                        datasets: [{
+                            data: [
+                                {{ resumen.ocupadas }},
+                                {{ resumen.disponibles }},
+                                {{ resumen.limpieza }}
+                            ],
+                            backgroundColor: [
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(245, 158, 11, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(239, 68, 68, 1)',
+                                'rgba(34, 197, 94, 1)',
+                                'rgba(245, 158, 11, 1)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15, font: { size: 12 } }
                             }
                         }
                     }
-                }
-            });
-            
-            console.log("Gráfica creada exitosamente");
-        });
-    </script>
-
-    <!-- SISTEMA DE TIEMPO REAL MEJORADO -->
-    <script>
-        class TiempoRealManager {
-            constructor() {
-                this.intervalId = null;
-                this.estaActivo = false;
-                this.ultimaActualizacion = null;
-                this.init();
-            }
-
-            init() {
-                console.log('🕐 Iniciando sistema de tiempo real...');
-                this.iniciarTiempoReal();
-                
-                // También actualizar cuando la ventana gana foco
-                window.addEventListener('focus', () => {
-                    if (!this.estaActivo) {
-                        this.iniciarTiempoReal();
-                    }
-                });
-
-                // Pausar cuando la ventana pierde foco para ahorrar recursos
-                window.addEventListener('blur', () => {
-                    // No pausamos completamente, pero reducimos frecuencia
-                    if (this.intervalId) {
-                        clearInterval(this.intervalId);
-                        this.intervalId = setInterval(() => this.actualizarTodasHabitaciones(), 60000); // 1 minuto
-                    }
                 });
             }
-
-            iniciarTiempoReal() {
-                if (this.intervalId) {
-                    clearInterval(this.intervalId);
-                }
-
-                // Actualización inmediata al cargar
-                this.actualizarTodasHabitaciones();
-                
-                // Actualizar cada 30 segundos
-                this.intervalId = setInterval(() => {
-                    this.actualizarTodasHabitaciones();
-                }, 30000);
-
-                this.estaActivo = true;
-                console.log('✅ Sistema de tiempo real activado');
-            }
-
-            async actualizarTodasHabitaciones() {
-                const habitaciones = document.querySelectorAll('[id^="tiempo-"]');
-                
-                if (habitaciones.length === 0) return;
-
-                console.log(`🔄 Actualizando ${habitaciones.length} habitaciones...`);
-                
-                const promesas = Array.from(habitaciones).map(element => 
-                    this.actualizarHabitacion(element)
-                );
-
-                await Promise.allSettled(promesas);
-                this.ultimaActualizacion = new Date();
-            }
-
-            async actualizarHabitacion(element) {
-                const rentaId = element.id.split('-')[1];
-                
-                try {
-                    const response = await fetch(`/api/tiempo_restante/${rentaId}`);
-                    const data = await response.json();
-
-                    if (data.error) {
-                        console.error(`Error en habitación ${rentaId}:`, data.error);
-                        return;
-                    }
-
-                    this.aplicarCambiosVisuales(element, data);
-                    
-                } catch (error) {
-                    console.error(`Error al actualizar habitación ${rentaId}:`, error);
-                }
-            }
-
-            aplicarCambiosVisuales(element, data) {
-                const tarjeta = element.closest('.bg-white');
-                const borde = tarjeta.querySelector('.border-l-4');
-                const tiempoTexto = element;
-                const horasExtraElement = tarjeta.querySelector('.horas-extra-info');
-
-                // Actualizar texto del tiempo
-                tiempoTexto.textContent = `Tiempo Restante: ${data.tiempo_restante}`;
-
-                // Manejar estado de tiempo extra
-                if (data.es_hora_extra) {
-                    this.marcarComoTiempoExtra(tarjeta, borde, tiempoTexto, data.horas_extra, horasExtraElement);
-                } else {
-                    this.marcarComoTiempoNormal(tarjeta, borde, tiempoTexto, horasExtraElement);
-                }
-
-                // Agregar efecto visual suave
-                this.agregarEfectoActualizacion(tiempoTexto);
-            }
-
-            marcarComoTiempoExtra(tarjeta, borde, tiempoTexto, horasExtra, horasExtraElement) {
-                // Cambiar a estilo de tiempo extra
-                borde.classList.remove('border-green-500', 'border-yellow-500');
-                borde.classList.add('border-red-500');
-                
-                tiempoTexto.classList.remove('text-green-600', 'text-yellow-600');
-                tiempoTexto.classList.add('text-red-600');
-
-                // Mostrar información de horas extra
-                if (horasExtraElement) {
-                    horasExtraElement.textContent = `${horasExtra.toFixed(2)} horas de tiempo extra.`;
-                } else {
-                    this.crearElementoHorasExtra(tarjeta, horasExtra);
-                }
-
-                // Efecto de alerta para tiempo extra
-                this.activarAlertaTiempoExtra(tarjeta);
-            }
-
-            marcarComoTiempoNormal(tarjeta, borde, tiempoTexto, horasExtraElement) {
-                // Restaurar estilo normal
-                borde.classList.remove('border-red-500', 'border-yellow-500');
-                borde.classList.add('border-green-500');
-                
-                tiempoTexto.classList.remove('text-red-600', 'text-yellow-600');
-                tiempoTexto.classList.add('text-green-600');
-
-                // Remover elemento de horas extra si existe
-                if (horasExtraElement) {
-                    horasExtraElement.remove();
-                }
-
-                // Remover efectos de alerta
-                this.desactivarAlertaTiempoExtra(tarjeta);
-            }
-
-            crearElementoHorasExtra(tarjeta, horasExtra) {
-                const horasExtraElement = document.createElement('p');
-                horasExtraElement.className = 'horas-extra-info text-xs text-red-500 mt-1';
-                horasExtraElement.textContent = `${horasExtra.toFixed(2)} horas de tiempo extra.`;
-                
-                const contenedorTiempo = tarjeta.querySelector('.border-t');
-                contenedorTiempo.appendChild(horasExtraElement);
-            }
-
-            activarAlertaTiempoExtra(tarjeta) {
-                tarjeta.classList.add('tiempo-extra-activo');
-                
-                // Efecto de parpadeo suave
-                if (!tarjeta.style.animation) {
-                    tarjeta.style.animation = 'alertaSuave 2s infinite';
-                }
-            }
-
-            desactivarAlertaTiempoExtra(tarjeta) {
-                tarjeta.classList.remove('tiempo-extra-activo');
-                tarjeta.style.animation = '';
-            }
-
-            agregarEfectoActualizacion(elemento) {
-                // Efecto visual sutil de actualización
-                elemento.style.transition = 'all 0.5s ease';
-                elemento.classList.add('actualizando');
-                
-                setTimeout(() => {
-                    elemento.classList.remove('actualizando');
-                }, 500);
-            }
-
-            detener() {
-                if (this.intervalId) {
-                    clearInterval(this.intervalId);
-                    this.intervalId = null;
-                    this.estaActivo = false;
-                    console.log('⏹️ Sistema de tiempo real detenido');
-                }
+        }
+        
+        // Funciones del modal
+        function abrirCheckoutModal(rentaId, habitacionNum, clienteNombre, horaEntrada, horaSalida) {
+            const modal = document.getElementById('checkoutModal');
+            if (modal) {
+                document.getElementById('renta_id').value = rentaId;
+                document.getElementById('habitacionNumero').textContent = '#' + habitacionNum;
+                document.getElementById('clienteNombre').textContent = clienteNombre;
+                document.getElementById('horaEntrada').textContent = horaEntrada;
+                document.getElementById('horaSalidaEst').textContent = horaSalida;
+                modal.classList.remove('hidden');
             }
         }
-
-        // Inicializar cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', function() {
-            window.tiempoRealManager = new TiempoRealManager();
-            
-            // También manejar el evento de visibilidad de la página
-            document.addEventListener('visibilitychange', function() {
-                if (!document.hidden && !window.tiempoRealManager.estaActivo) {
-                    window.tiempoRealManager.iniciarTiempoReal();
-                }
-            });
-        });
-    </script>
-
-    <!-- Script para los modales y funcionalidades -->
-    <script>
-        // Funciones para el modal del checklist
-        function abrirChecklist(rentaId, habitacionNumero) {
-            document.getElementById('rentaId').value = rentaId;
-            document.getElementById('modalHabitacionNumero').textContent = habitacionNumero;
-            document.getElementById('checklistModal').classList.remove('hidden');
-            
-            // Resetear formulario al abrir
-            document.getElementById('checklistForm').reset();
-            calcularTotalCargos();
-        }
-
+        
         function cerrarModal() {
-            document.getElementById('checklistModal').classList.add('hidden');
+            const modal = document.getElementById('checkoutModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
         }
-
-        // Manejar checkboxes y campos de precio
-        document.addEventListener('DOMContentLoaded', function() {
-            // Configurar event listeners para todos los conceptos
-            document.querySelectorAll('.concepto-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const conceptoItem = this.closest('.concepto-item');
-                    const inputs = conceptoItem.querySelectorAll('.concepto-input');
-                    
-                    if (this.checked) {
-                        conceptoItem.classList.remove('disabled');
-                        inputs.forEach(input => input.disabled = false);
-                    } else {
-                        conceptoItem.classList.add('disabled');
-                        inputs.forEach(input => {
-                            input.disabled = true;
-                            if (input.type === 'number') input.value = '';
-                            if (input.type === 'text') input.value = '';
-                        });
-                    }
-                    calcularTotalCargos();
-                });
+        
+        function actualizarCargo(checkbox, montoId) {
+            const montoInput = document.getElementById(montoId);
+            if (montoInput) {
+                montoInput.disabled = !checkbox.checked;
+                if (!checkbox.checked) {
+                    montoInput.value = '0';
+                }
+                calcularTotal();
+            }
+        }
+        
+        function calcularTotal() {
+            let total = 0;
+            
+            // Sumar todos los montos
+            const montos = [
+                'danos_habitacion_monto',
+                'muebles_danados_monto',
+                'equipo_danado_monto',
+                'objetos_olvidados_monto',
+                'limpieza_extra_monto'
+            ];
+            
+            montos.forEach(montoId => {
+                const input = document.getElementById(montoId);
+                if (input && !input.disabled) {
+                    total += parseFloat(input.value) || 0;
+                }
             });
             
-            // Event listeners para campos de precio
-            document.querySelectorAll('input[type="number"]').forEach(input => {
-                input.addEventListener('input', calcularTotalCargos);
-            });
-        });
-
-        function calcularTotalCargos() {
-            // Calcular cada concepto individualmente
-            const danos = parseFloat(document.querySelector('input[name="cargo_danos"]').value) || 0;
-            const muebles = parseFloat(document.querySelector('input[name="cargo_muebles"]').value) || 0;
-            const equipo = parseFloat(document.querySelector('input[name="cargo_equipo"]').value) || 0;
-            const objetos = parseFloat(document.querySelector('input[name="cargo_objetos"]').value) || 0;
-            const limpieza = parseFloat(document.querySelector('input[name="cargo_limpieza"]').value) || 0;
-            const otros = parseFloat(document.querySelector('input[name="otros_cargos"]').value) || 0;
+            // Actualizar resumen
+            document.getElementById('resumen_danos').textContent = '$' + (parseFloat(document.getElementById('danos_habitacion_monto').value) || 0).toFixed(2);
+            document.getElementById('resumen_muebles').textContent = '$' + (parseFloat(document.getElementById('muebles_danados_monto').value) || 0).toFixed(2);
+            document.getElementById('resumen_equipo').textContent = '$' + (parseFloat(document.getElementById('equipo_danado_monto').value) || 0).toFixed(2);
+            document.getElementById('resumen_objetos').textContent = '$' + (parseFloat(document.getElementById('objetos_olvidados_monto').value) || 0).toFixed(2);
+            document.getElementById('resumen_limpieza').textContent = '$' + (parseFloat(document.getElementById('limpieza_extra_monto').value) || 0).toFixed(2);
             
-            // Actualizar resumen individual
-            document.getElementById('resumenDanos').textContent = danos.toFixed(2);
-            document.getElementById('resumenMuebles').textContent = muebles.toFixed(2);
-            document.getElementById('resumenEquipo').textContent = equipo.toFixed(2);
-            document.getElementById('resumenObjetos').textContent = objetos.toFixed(2);
-            document.getElementById('resumenLimpieza').textContent = limpieza.toFixed(2);
-            document.getElementById('resumenOtros').textContent = otros.toFixed(2);
-            
-            // Calcular total
-            const total = danos + muebles + equipo + objetos + limpieza + otros;
-            document.getElementById('totalCargos').textContent = total.toFixed(2);
+            // Actualizar total
+            document.getElementById('total_cargos').textContent = '$' + total.toFixed(2);
+            return total;
         }
-
-        // Manejar envío del formulario del checklist
-        document.getElementById('checklistForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        
+        function procesarCheckout() {
+            const rentaId = document.getElementById('renta_id').value;
+            const totalCargos = calcularTotal();
+            const observaciones = document.getElementById('observaciones').value;
             
-            const formData = new FormData(this);
+            const formData = new FormData();
+            formData.append('renta_id', rentaId);
+            formData.append('total_cargos', totalCargos);
+            formData.append('observaciones', observaciones);
             
-            // ✅ URL actualizada a '/checkout_completo'
             fetch('/checkout_completo', {
                 method: 'POST',
                 body: formData
@@ -901,26 +855,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message); // Mostrar mensaje detallado
-                    window.location.reload();
+                    alert(data.message);
+                    cerrarModal();
+                    location.reload(); // Recargar la página para actualizar
                 } else {
                     alert('Error: ' + data.error);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Error al procesar el check-out');
+                alert('Error en la solicitud: ' + error);
             });
-        });
-
-        // Funciones para el modal de cancelación
-        function abrirCancelacion(rentaId) {
-            document.getElementById('cancelRentaId').value = rentaId;
-            document.getElementById('cancelacionModal').classList.remove('hidden');
-        }
-
-        function cerrarCancelacionModal() {
-            document.getElementById('cancelacionModal').classList.add('hidden');
         }
     </script>
 </body>

@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Recepción</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+        .clock-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .clock-time {
+            font-family: 'Inter', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .clock-date {
+            opacity: 0.9;
+        }
+        #actividadChart {
+            display: block !important;
+            width: 100% !important;
+            height: 256px !important;
+        }
+        
+        /* Animaciones para limpieza */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .limpieza-activa {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Estilos para el modal */
+        #checkoutModal {
+            backdrop-filter: blur(4px);
+        }
+        
+        #checkoutModal > div {
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Estilos para los checkboxes */
+        input[type="checkbox"]:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        
+        /* Estilos para los campos de monto */
+        input[type="number"]:disabled {
+            background-color: #f9fafb;
+            cursor: not-allowed;
+        }
+        
+        /* Animaciones */
+        .animate-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* ===== SISTEMA DE MENSAJES FLASH (Igual que en login) ===== */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        
+        .toast-enter {
+            animation: slideInRight 0.5s ease-out;
+        }
+        
+        .toast-exit {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+        
+        /* Estilos para mensajes flash */
+        .flash-toast {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        /* ===== NOTIFICACIONES ELEGANTES ===== */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 5px solid;
+            transform: translateX(400px);
+            opacity: 0;
+            animation: slideIn 0.3s forwards, fadeOut 0.3s forwards 7s;
+            transition: all 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification:hover {
+            transform: translateX(0) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification-success {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .notification-error {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        }
+
+        .notification-info {
+            border-left-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .notification-warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .notification-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notification-success .notification-icon {
+            color: #10b981;
+        }
+
+        .notification-error .notification-icon {
+            color: #ef4444;
+        }
+
+        .notification-info .notification-icon {
+            color: #3b82f6;
+        }
+
+        .notification-warning .notification-icon {
+            color: #f59e0b;
+        }
+
+        .notification-content {
+            flex-grow: 1;
+        }
+
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 15px;
+            color: #1f2937;
+        }
+
+        .notification-message {
+            font-size: 14px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .notification-close:hover {
+            color: #374151;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* ===== LOADER PARA BOTÓN ===== */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Mejoras para inputs de monto */
+        .monto-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        /* Colores para tiempo restante */
+        .tiempo-verde {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .tiempo-amarillo {
+            background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        
+        .tiempo-rojo {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- ===== CONTENEDOR DE MENSAJES FLASH (Igual que en login) ===== -->
+    <div class="fixed top-4 right-4 z-50 space-y-3 max-w-md" id="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div 
+                        id="flash-{{ loop.index }}"
+                        class="flash-toast rounded-lg shadow-xl p-4 border-l-4 flex items-center justify-between"
+                        data-category="{{ category }}"
+                        data-auto-remove="true">
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono -->
+                            <div class="flash-icon flex-shrink-0">
+                                {% if category == 'success' %}
+                                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% elif category == 'error' %}
+                                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% elif category == 'warning' %}
+                                    <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                    </svg>
+                                {% else %}
+                                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            <!-- Mensaje -->
+                            <div>
+                                <p class="text-sm font-medium">{{ message }}</p>
+                            </div>
+                        </div>
+                        <!-- Botón para cerrar -->
+                        <button onclick="closeToast(this)" class="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0 focus:outline-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Sidebar MEJORADO -->
+    <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col z-40">
+        <!-- Header -->
+        <div class="p-4 flex items-center gap-3 border-b border-gray-200">
+            <div class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">H</div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Halftime Inn</h2>
+                <p class="text-sm text-gray-500">Módulo Recepción</p>
+            </div>
+        </div>
+
+        <!-- Información del Usuario -->
+        <div class="flex items-center gap-3 p-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-800">{{ current_user.username }}</p>
+                <p class="text-xs text-gray-500">
+                    Recepcionista - {{ current_user.turno }} | Sucursal {{ current_user.sucursal_id }}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Menú PRINCIPAL -->
+        <nav class="flex-1 overflow-y-auto p-3">
+            <ul class="space-y-1 text-sm">
+                <li>
+                    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-bold">
+                        <i class="fas fa-home w-5"></i>
+                        Dashboard
+                    </a>
+                </li>
+                
+                <!-- Nuevo Check-in -->
+                <li>
+                    <a href="{{ url_for('checkin_recepcionista') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
+                        <i class="fas fa-key w-5"></i>
+                        Nuevo Check-in
+                    </a>
+                </li>
+                
+                <!-- Logout -->
+                <li class="mt-auto pt-4 border-t border-gray-100">
+                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+                        <i class="fas fa-sign-out-alt w-5"></i>
+                        Cerrar Sesión
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Botón móvil -->
+    <button id="menu-btn" class="lg:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-2 rounded-md shadow-md focus:outline-none">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Contenido principal -->
+<div class="min-h-screen flex flex-col items-center p-4 sm:p-6 ml-0 lg:ml-64 transition-all duration-300" id="main-content">
+    
+    <!-- Encabezado MEJORADO -->
+    <header class="w-full max-w-6xl mb-8 mt-12 lg:mt-6">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-start gap-6">
+            <!-- Columna IZQUIERDA: Título -->
+            <div class="flex-1">
+                <h1 class="text-3xl lg:text-4xl font-bold text-gray-800">Panel de Recepción</h1>
+                <p class="text-lg text-indigo-600 font-medium mt-1">
+                    <i class="fas fa-user-clock mr-2"></i>Recepcionista | {{ current_user.turno }} | Sucursal {{ current_user.sucursal_id }}
+                </p>
+            </div>
+
+            <!-- Columna DERECHA: Reloj + Botones debajo -->
+            <div class="flex flex-col items-end gap-4 w-full lg:w-auto">
+                <!-- Reloj -->
+                <div class="clock-container p-5 text-white text-center w-full lg:w-auto min-w-[260px]">
+                    <div id="fecha-actual" class="text-sm font-semibold uppercase tracking-wider mb-2">Cargando...</div>
+                    <div id="hora-actual" class="text-4xl font-bold">00:00:00</div>
+                    <div id="dia-semana" class="text-sm font-medium mt-2 opacity-90">...</div>
+                </div>
+                
+                <!-- Botones DEBAJO del reloj, alineados a la DERECHA -->
+                <div class="flex flex-row gap-3 justify-end w-full lg:w-auto">
+                    <!-- Botón Nuevo Check-in - VERDE (cambio SOLO de color) -->
+                    <a href="{{ url_for('checkin_recepcionista') }}" 
+                       class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                        <i class="fas fa-plus mr-2 text-lg"></i>
+                        Nuevo Check-in
+                    </a>
+                    
+                    <!-- Botón Corte de Turno - AZUL (se mantiene igual) -->
+                    <a href="{{ url_for('reportes_recepcion') }}" 
+                       class="inline-flex items-center justify-center px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 min-w-[160px] text-center">
+                        <i class="fas fa-clipboard-check mr-2 text-lg"></i>
+                        Corte de Turno
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+        <!-- Contenido del Dashboard -->
+        <div class="w-full max-w-6xl">
+            <!-- TARJETAS DE RESUMEN DEL DÍA (MEJORADAS) -->
+            <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <!-- Clientes del Día -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Clientes Hoy</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.clientes_dia }}</p>
+                </div>
+                
+                <!-- Ingreso Inicial del Día -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Ingresos Hoy</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+                </div>
+                
+                <!-- Habitaciones Ocupadas -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-bed"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">Ocupadas</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.ocupadas }}</p>
+                </div>
+
+                <!-- En Limpieza (con animación si hay) -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 {% if resumen.limpieza > 0 %}limpieza-activa{% endif %}">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-broom"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-500">En Limpieza</p>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.limpieza }}</p>
+                </div>
+            </div>
+
+            <!-- GRÁFICA PIE con datos REALES -->
+            <div class="w-full mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-pie mr-3 text-indigo-600"></i>
+                        Distribución de Habitaciones - Sucursal {{ current_user.sucursal_id }}
+                    </h2>
+                    <div class="h-64">
+                        <canvas id="actividadChart"></canvas>
+                    </div>
+                    <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+                        <div class="text-red-600 font-semibold">
+                            <i class="fas fa-bed mr-1"></i> Ocupadas: {{ resumen.ocupadas }}
+                        </div>
+                        <div class="text-green-600 font-semibold">
+                            <i class="fas fa-check-circle mr-1"></i> Disponibles: {{ resumen.disponibles }}
+                        </div>
+                        <div class="text-orange-600 font-semibold">
+                            <i class="fas fa-broom mr-1"></i> Limpieza: {{ resumen.limpieza }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HABITACIONES OCUPADAS -->
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-door-closed mr-3 text-red-600"></i>
+                    Mis Habitaciones Ocupadas
+                    <span class="ml-2 text-sm bg-red-100 text-red-800 px-3 py-1 rounded-full">{{ ocupadas|length }} activas</span>
+                </h2>
+                
+                {% if ocupadas %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for o in ocupadas %}
+                    {% set horas_int = o.horas_restantes|int %}
+                    {% set minutos = ((o.horas_restantes - horas_int) * 60)|round(0, 'floor')|int %}
+                    {% set tiempo_clase = 'tiempo-verde' %}
+                    {% if o.horas_restantes <= 0.5 %}
+                        {% set tiempo_clase = 'tiempo-rojo' %}
+                    {% elif o.horas_restantes <= 2 %}
+                        {% set tiempo_clase = 'tiempo-amarillo' %}
+                    {% endif %}
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-red-500 transform hover:scale-[1.02] transition duration-300 tarjeta-renta" 
+                         data-renta-id="{{ o.id }}">
+                        
+                        <!-- Header de la habitación -->
+                        <div class="flex justify-between items-start mb-4 border-b pb-3">
+                            <div>
+                                <h2 class="text-3xl font-extrabold text-gray-800">#{{ o.numero }}</h2>
+                                <p class="text-sm text-gray-500">ID Renta: {{ o.id }}</p>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full 
+                                         {% if o.tipo == 'JACUZZI' %} bg-yellow-100 text-yellow-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
+                                {{ o.tipo }}
+                            </span>
+                        </div>
+
+                        <!-- Información de la renta -->
+                        <div class="space-y-3 text-sm text-gray-600 mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-user text-indigo-500 w-5 mr-2"></i>
+                                <span><strong>Cliente:</strong> {{ o.cliente }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-sign-in-alt text-green-500 w-5 mr-2"></i>
+                                <span><strong>Entrada:</strong> {{ o.entrada.strftime('%H:%M') }}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-sign-out-alt text-red-500 w-5 mr-2"></i>
+                                <span><strong>Salida Est.:</strong> {{ o.salida_estimada.strftime('%H:%M') }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Tiempo restante MEJORADO -->
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <p class="text-lg font-bold text-gray-800 mb-2">Tiempo Restante:</p>
+                            <div class="text-center py-3 rounded-lg {{ tiempo_clase }}" id="tiempo-bg-{{ o.id }}">
+                                <span class="text-2xl font-mono font-bold" id="tiempo-{{ o.id }}">
+                                    {% if o.horas_restantes > 0 %}
+                                        {{ horas_int }}h {{ minutos }}m
+                                    {% else %}
+                                        ¡Tiempo agotado!
+                                    {% endif %}
+                                </span>
+                                <p class="text-xs text-gray-600 mt-1">
+                                    {{ "%.1f"|format(o.horas_restantes) }} horas totales
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Botón de acción -->
+                        <button onclick="abrirCheckoutModal('{{ o.id }}', '{{ o.numero }}', '{{ o.cliente }}', '{{ o.entrada.strftime('%H:%M') if o.entrada else 'N/A' }}', '{{ o.salida_estimada.strftime('%H:%M') if o.salida_estimada else 'N/A' }}')" 
+                            class="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition-all duration-300 mt-4">
+                            Finalizar Renta
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="w-full p-10 text-center bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200">
+                    <i class="fas fa-bed text-5xl text-gray-300 mb-4"></i>
+                    <p class="text-2xl font-semibold text-gray-500">
+                        No hay habitaciones ocupadas en tu turno
+                    </p>
+                    <p class="text-gray-400 mt-2">
+                        Puedes iniciar un nuevo Check-in para ocupar una habitación.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA CHECKLIST DE SALIDA (AGREGADO) -->
+    <div id="checkoutModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Checklist de Salida</h2>
+                    <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <form id="checkoutForm">
+                    <input type="hidden" id="renta_id" name="renta_id">
+                    
+                    <!-- INFORMACIÓN DE LA RENTA -->
+                    <div class="bg-indigo-50 p-4 rounded-lg mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Habitación</p>
+                                <p class="font-bold text-lg" id="habitacionNumero">#103</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Cliente</p>
+                                <p class="font-bold" id="clienteNombre">Diego Rubio</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Entrada</p>
+                                <p class="font-bold" id="horaEntrada">22:06</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Salida</p>
+                                <p class="font-bold" id="horaSalidaEst">02:06</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CHECKLIST DE VERIFICACIÓN -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Verificación de Habitación</h3>
+                        
+                        <div class="space-y-4">
+                            <!-- ITEM 1 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="danos_habitacion" name="danos_habitacion" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'danos_habitacion_monto')">
+                                <div class="flex-1">
+                                    <label for="danos_habitacion" class="font-medium">Daños en habitación</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="danos_habitacion_monto" name="danos_habitacion_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ITEM 2 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="muebles_danados" name="muebles_danados" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'muebles_danados_monto')">
+                                <div class="flex-1">
+                                    <label for="muebles_danados" class="font-medium">Muebles dañados</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="muebles_danados_monto" name="muebles_danados_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ITEM 3 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="equipo_danado" name="equipo_danado" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'equipo_danado_monto')">
+                                <div class="flex-1">
+                                    <label for="equipo_danado" class="font-medium">Equipo dañado (TV, A/C)</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="equipo_danado_monto" name="equipo_danado_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ITEM 4 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="objetos_olvidados" name="objetos_olvidados" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'objetos_olvidados_monto')">
+                                <div class="flex-1">
+                                    <label for="objetos_olvidados" class="font-medium">Objetos olvidados</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="objetos_olvidados_monto" name="objetos_olvidados_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ITEM 5 -->
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="limpieza_extra" name="limpieza_extra" class="mt-1 h-5 w-5" onchange="actualizarCargo(this, 'limpieza_extra_monto')">
+                                <div class="flex-1">
+                                    <label for="limpieza_extra" class="font-medium">Limpieza extra requerida</label>
+                                    <div class="mt-2">
+                                        <input type="number" id="limpieza_extra_monto" name="limpieza_extra_monto" min="0" step="0.01" placeholder="0.00" 
+                                               class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- OBSERVACIONES -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Observaciones</h3>
+                        <textarea id="observaciones" name="observaciones" rows="4" 
+                                  class="w-full border rounded-lg p-3" 
+                                  placeholder="Notas adicionales sobre el estado de la habitación..."></textarea>
+                    </div>
+                    
+                    <!-- RESUMEN DE CARGOS -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700">Resumen de Cargos</h3>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="text-gray-600">Daños en habitación:</div>
+                            <div class="text-right font-bold" id="resumen_danos">$0.00</div>
+                            
+                            <div class="text-gray-600">Muebles dañados:</div>
+                            <div class="text-right font-bold" id="resumen_muebles">$0.00</div>
+                            
+                            <div class="text-gray-600">Equipo dañado:</div>
+                            <div class="text-right font-bold" id="resumen_equipo">$0.00</div>
+                            
+                            <div class="text-gray-600">Objetos olvidados:</div>
+                            <div class="text-right font-bold" id="resumen_objetos">$0.00</div>
+                            
+                            <div class="text-gray-600">Limpieza extra:</div>
+                            <div class="text-right font-bold" id="resumen_limpieza">$0.00</div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xl font-bold text-gray-800">TOTAL:</span>
+                                <span class="text-2xl font-bold text-red-600" id="total_cargos">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="flex gap-3 justify-end">
+                        <button type="button" onclick="cerrarModal()" 
+                                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="procesarCheckout()" 
+                                class="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                            Finalizar Renta
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR DE NOTIFICACIONES -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+   <script>
+    // ============ VARIABLES GLOBALES ============
+    let rentaActual = null;
+    let actividadChart = null;
+    let contadorIntervalo = null;
+    const TOAST_DURATION = 6000; // 6 segundos
+    
+    // ============ SISTEMA DE MENSAJES FLASH (Igual que en login) ============
+    
+    function setupFlashMessages() {
+        const toasts = document.querySelectorAll('.flash-toast[data-auto-remove="true"]');
+        
+        toasts.forEach((toast, index) => {
+            // Aplicar estilos según categoría
+            applyToastStyles(toast);
+            
+            // Auto-remover después del tiempo especificado
+            setTimeout(() => {
+                removeToast(toast);
+            }, TOAST_DURATION + (index * 100)); // Pequeño delay entre toasts
+        });
+    }
+    
+    function applyToastStyles(toast) {
+        const category = toast.dataset.category;
+        
+        // Colores según categoría
+        const styles = {
+            'success': {
+                bg: 'bg-green-50',
+                border: 'border-green-500',
+                text: 'text-green-800'
+            },
+            'error': {
+                bg: 'bg-red-50',
+                border: 'border-red-500',
+                text: 'text-red-800'
+            },
+            'warning': {
+                bg: 'bg-yellow-50',
+                border: 'border-yellow-500',
+                text: 'text-yellow-800'
+            },
+            'info': {
+                bg: 'bg-blue-50',
+                border: 'border-blue-500',
+                text: 'text-blue-800'
+            }
+        };
+        
+        const style = styles[category] || styles.info;
+        
+        // Aplicar clases
+        toast.classList.add(style.bg, style.border, style.text);
+    }
+    
+    function closeToast(button) {
+        const toast = button.closest('.flash-toast');
+        removeToast(toast);
+    }
+    
+    function removeToast(toast) {
+        if (!toast) return;
+        
+        // Agregar animación de salida
+        toast.classList.add('toast-exit');
+        
+        // Remover después de la animación
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 500); // Tiempo de la animación
+    }
+    
+    // ============ FUNCIONES DE NOTIFICACIÓN ============
+    
+    function showNotification(type, title, message, duration = 5000) {
+        const container = document.getElementById('notificationContainer');
+        if (!container) return null;
+        
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        
+        let icon = 'ℹ️';
+        if (type === 'success') icon = '✅';
+        if (type === 'error') icon = '❌';
+        if (type === 'warning') icon = '⚠️';
+        
+        notification.innerHTML = `
+            <div class="notification-icon">${icon}</div>
+            <div class="notification-content">
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        container.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode === container) {
+                notification.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => {
+                    if (notification.parentNode === container) {
+                        container.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }, duration);
+        
+        return notification;
+    }
+    
+    // ============ FUNCIONES DEL DASHBOARD ============
+    
+    // 1. Reloj en tiempo real
+    function actualizarReloj() {
+        const ahora = new Date();
+        const horas = ahora.getHours().toString().padStart(2, '0');
+        const minutos = ahora.getMinutes().toString().padStart(2, '0');
+        const segundos = ahora.getSeconds().toString().padStart(2, '0');
+        const horaCompleta = `${horas}:${minutos}:${segundos}`;
+        
+        const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
+        const fechaCompleta = ahora.toLocaleDateString('es-ES', opcionesFecha);
+        const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        
+        document.getElementById('hora-actual').textContent = horaCompleta;
+        document.getElementById('fecha-actual').textContent = fechaCompleta;
+        document.getElementById('dia-semana').textContent = dias[ahora.getDay()];
+    }
+    
+    // 2. Menú responsive
+    function setupMenu() {
+        const menuBtn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        if (menuBtn && sidebar) {
+            menuBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('sidebar-hidden');
+            });
+        }
+    }
+    
+    // 3. Gráfica Pie
+    function setupChart() {
+        const ctx = document.getElementById('actividadChart');
+        if (ctx) {
+            actividadChart = new Chart(ctx.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Ocupadas', 'Disponibles', 'Limpieza'],
+                    datasets: [{
+                        data: [
+                            {{ resumen.ocupadas }},
+                            {{ resumen.disponibles }},
+                            {{ resumen.limpieza }}
+                        ],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(245, 158, 11, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(245, 158, 11, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // ============ FUNCIONES DEL CHECKOUT MODAL ============
+    
+    // 4. Abrir modal de checkout
+    function abrirCheckoutModal(rentaId, habitacionNum, clienteNombre, horaEntrada, horaSalida) {
+        console.log('🔓 Abriendo modal para renta:', rentaId);
+        
+        rentaActual = {
+            id: rentaId,
+            habitacionNum: habitacionNum,
+            clienteNombre: clienteNombre,
+            horaEntrada: horaEntrada,
+            horaSalida: horaSalida
+        };
+        
+        document.getElementById('habitacionNumero').textContent = `#${habitacionNum}`;
+        document.getElementById('clienteNombre').textContent = clienteNombre;
+        document.getElementById('horaEntrada').textContent = horaEntrada;
+        document.getElementById('horaSalidaEst').textContent = horaSalida;
+        document.getElementById('renta_id').value = rentaId;
+        document.getElementById('modalTitle').textContent = `Checklist - Habitación #${habitacionNum}`;
+        
+        resetearFormulario();
+        
+        const modal = document.getElementById('checkoutModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                const firstCheckbox = modal.querySelector('input[type="checkbox"]');
+                if (firstCheckbox) firstCheckbox.focus();
+            }, 100);
+        }
+    }
+    
+    // 5. Cerrar modal
+    function cerrarModal() {
+        const modal = document.getElementById('checkoutModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+        rentaActual = null;
+        
+        const form = document.getElementById('checkoutForm');
+        if (form) form.reset();
+    }
+    
+    // 6. Resetear formulario
+    function resetearFormulario() {
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change'));
+        });
+        
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.disabled = true;
+            input.value = '';
+            input.classList.remove('monto-input');
+        });
+        
+        ['danos', 'muebles', 'equipo', 'objetos', 'limpieza'].forEach(id => {
+            const elem = document.getElementById(`resumen_${id}`);
+            if (elem) elem.textContent = '$0.00';
+        });
+        
+        const totalElem = document.getElementById('total_cargos');
+        if (totalElem) totalElem.textContent = '$0.00';
+        
+        const obsElem = document.getElementById('observaciones');
+        if (obsElem) obsElem.value = '';
+    }
+    
+    // 7. Actualizar campo de monto
+    function actualizarCargo(checkbox, montoId) {
+        const montoInput = document.getElementById(montoId);
+        if (montoInput) {
+            montoInput.disabled = !checkbox.checked;
+            montoInput.classList.toggle('monto-input', checkbox.checked);
+            if (!checkbox.checked) {
+                montoInput.value = '';
+                montoInput.dispatchEvent(new Event('input'));
+            } else {
+                setTimeout(() => montoInput.focus(), 10);
+            }
+        }
+    }
+    
+    // 8. Calcular total
+    function calcularTotal() {
+        let total = 0;
+        
+        const cargos = [
+            { input: 'danos_habitacion_monto', resumen: 'danos' },
+            { input: 'muebles_danados_monto', resumen: 'muebles' },
+            { input: 'equipo_danado_monto', resumen: 'equipo' },
+            { input: 'objetos_olvidados_monto', resumen: 'objetos' },
+            { input: 'limpieza_extra_monto', resumen: 'limpieza' }
+        ];
+        
+        cargos.forEach(({ input, resumen }) => {
+            const inputElem = document.getElementById(input);
+            const resumenElem = document.getElementById(`resumen_${resumen}`);
+            
+            if (inputElem && resumenElem) {
+                const valor = parseFloat(inputElem.value) || 0;
+                total += valor;
+                resumenElem.textContent = `$${valor.toFixed(2)}`;
+            }
+        });
+        
+        const totalElem = document.getElementById('total_cargos');
+        if (totalElem) {
+            totalElem.textContent = `$${total.toFixed(2)}`;
+        }
+    }
+    
+    // 9. Procesar checkout - VERSIÓN CORREGIDA
+    async function procesarCheckout() {
+        console.log("🔄 Iniciando checkout...");
+        
+        if (!rentaActual) {
+            showNotification('error', 'Error', 'No hay datos de renta');
+            return;
+        }
+        
+        const totalCargos = document.getElementById('total_cargos').textContent;
+        
+        if (!confirm(`¿CONFIRMAR CHECKOUT?\n\nHabitación: #${rentaActual.habitacionNum}\nCliente: ${rentaActual.clienteNombre}\nTotal: ${totalCargos}\n\nLa habitación pasará a limpieza por 10 segundos.`)) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('renta_id', rentaActual.id);
+        formData.append('total_cargos', parseFloat(totalCargos.replace('$', '')) || 0);
+        formData.append('observaciones', document.getElementById('observaciones').value);
+        
+        const cargos = [
+            'danos_habitacion_monto',
+            'muebles_danados_monto', 
+            'equipo_danado_monto',
+            'objetos_olvidados_monto',
+            'limpieza_extra_monto'
+        ];
+        
+        cargos.forEach(campo => {
+            const input = document.getElementById(campo);
+            const valor = input && !input.disabled ? input.value || '0' : '0';
+            formData.append(campo, valor);
+        });
+        
+        const botonFinalizar = document.querySelector('button[onclick="procesarCheckout()"]');
+        const originalText = botonFinalizar.textContent;
+        botonFinalizar.textContent = '⏳ Procesando...';
+        botonFinalizar.disabled = true;
+        
+        try {
+            const response = await fetch('/checkout_completo', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+            
+            const data = await response.json();
+            console.log("📊 Respuesta:", data);
+            
+            if (data.success) {
+                showNotification(
+                    'success',
+                    '✅ Checkout Completado',
+                    `Habitación #${rentaActual.habitacionNum} en limpieza.`,
+                    3000
+                );
+                
+                cerrarModal();
+                
+                // Recargar después de 2 segundos
+                setTimeout(() => {
+                    console.log("🔄 Recargando página...");
+                    window.location.reload(true);
+                }, 2000);
+                
+            } else {
+                showNotification('error', '❌ Error', data.error || 'Error desconocido');
+                botonFinalizar.textContent = originalText;
+                botonFinalizar.disabled = false;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error:', error);
+            showNotification('error', '❌ Error de Conexión', error.message);
+            botonFinalizar.textContent = originalText;
+            botonFinalizar.disabled = false;
+        }
+    }
+    
+    // ============ FUNCIÓN PARA RECARGA AUTOMÁTICA ============
+    
+    function setupAutoRefresh() {
+        {% if resumen.limpieza > 0 %}
+        console.log(`🔄 ${resumen.limpieza} habitación(es) en limpieza`);
+        
+        // Mostrar notificación informativa
+        showNotification(
+            'info',
+            '🔄 Actualización automática',
+            `Hay ${resumen.limpieza} habitación(es) en limpieza. La página se actualizará automáticamente.`,
+            3000
+        );
+        
+        // Configurar recarga después de 12 segundos (10s limpieza + 2s margen)
+        if (contadorIntervalo) clearInterval(contadorIntervalo);
+        
+        let segundosRestantes = 12;
+        actualizarContador(segundosRestantes);
+        
+        contadorIntervalo = setInterval(() => {
+            segundosRestantes--;
+            actualizarContador(segundosRestantes);
+            
+            if (segundosRestantes <= 0) {
+                clearInterval(contadorIntervalo);
+                console.log("⏰ Tiempo completado. Recargando...");
+                window.location.reload(true);
+            }
+        }, 1000);
+        {% endif %}
+    }
+    
+    function actualizarContador(segundos) {
+        console.log(`⏱️ Recargando en: ${segundos}s`);
+        
+        // Actualizar contador visual si existe
+        let contadorElem = document.getElementById('contador-limpieza');
+        if (!contadorElem && segundos > 0) {
+            contadorElem = document.createElement('div');
+            contadorElem.id = 'contador-limpieza';
+            contadorElem.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 font-bold';
+            document.body.appendChild(contadorElem);
+        }
+        
+        if (contadorElem) {
+            contadorElem.textContent = `🔄 Actualizando en: ${segundos}s`;
+            
+            if (segundos <= 0) {
+                setTimeout(() => contadorElem.remove(), 1000);
+            }
+        }
+    }
+    
+    // ============ ACTUALIZACIÓN DE TIEMPO EN TIEMPO REAL ============
+    
+    function actualizarTiemposRestantes() {
+        document.querySelectorAll('.tarjeta-renta').forEach(tarjeta => {
+            const rentaId = tarjeta.dataset.rentaId;
+            const tiempoElement = document.getElementById(`tiempo-${rentaId}`);
+            const tiempoBg = document.getElementById(`tiempo-bg-${rentaId}`);
+            
+            if (!tiempoElement || !tiempoBg) return;
+            
+            // Obtener hora de salida del texto
+            const salidaText = tarjeta.querySelector('.fa-sign-out-alt')?.nextElementSibling?.textContent;
+            const match = salidaText?.match(/\d{2}:\d{2}/);
+            
+            if (!match) return;
+            
+            const [horasSalida, minutosSalida] = match[0].split(':').map(Number);
+            const ahora = new Date();
+            
+            // Crear fecha de salida
+            const salidaEstimada = new Date();
+            salidaEstimada.setHours(horasSalida);
+            salidaEstimada.setMinutes(minutosSalida);
+            salidaEstimada.setSeconds(0);
+            
+            // Si la hora de salida ya pasó hoy, asumir que es para mañana
+            if (salidaEstimada <= ahora) {
+                salidaEstimada.setDate(salidaEstimada.getDate() + 1);
+            }
+            
+            // Calcular diferencia
+            const diferenciaMs = salidaEstimada - ahora;
+            
+            if (diferenciaMs <= 0) {
+                tiempoElement.textContent = '¡Tiempo agotado!';
+                tiempoBg.className = 'text-center py-3 rounded-lg tiempo-rojo animate-pulse';
+                return;
+            }
+            
+            // Convertir a horas y minutos
+            const horasRestantes = Math.floor(diferenciaMs / (1000 * 60 * 60));
+            const minutosRestantes = Math.floor((diferenciaMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            // Actualizar texto
+            tiempoElement.textContent = `${horasRestantes}h ${minutosRestantes}m`;
+            
+            // Calcular horas totales para determinar color
+            const horasTotales = horasRestantes + (minutosRestantes / 60);
+            
+            // Actualizar colores según urgencia
+            if (horasTotales > 2) {
+                tiempoBg.className = 'text-center py-3 rounded-lg tiempo-verde';
+            } else if (horasTotales > 0.5) {
+                tiempoBg.className = 'text-center py-3 rounded-lg tiempo-amarillo';
+            } else {
+                tiempoBg.className = 'text-center py-3 rounded-lg tiempo-rojo animate-pulse';
+            }
+        });
+    }
+    
+    // ============ INICIALIZACIÓN ============
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar sistema de mensajes flash
+        setupFlashMessages();
+        
+        actualizarReloj();
+        setInterval(actualizarReloj, 1000);
+        
+        setupMenu();
+        setupChart();
+        setupAutoRefresh();
+        
+        // Cerrar modal con ESC
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('checkoutModal');
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                cerrarModal();
+            }
+        });
+        
+        // Cerrar modal al hacer clic fuera
+        const modal = document.getElementById('checkoutModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.id === 'checkoutModal') {
+                    cerrarModal();
+                }
+            });
+        }
+        
+        // Inicializar actualización de tiempos en tiempo real
+        actualizarTiemposRestantes();
+        setInterval(actualizarTiemposRestantes, 60000); // Actualizar cada minuto
+        
+        // Verificar si hay tiempos urgentes cada 30 segundos
+        setInterval(() => {
+            document.querySelectorAll('.tiempo-rojo').forEach(element => {
+                if (!element.classList.contains('animate-pulse')) {
+                    element.classList.add('animate-pulse');
+                }
+            });
+        }, 30000);
+    });
+    
+    // Función antigua para compatibilidad
+    function confirmarCheckout(rentaId) {
+        console.warn('⚠️ Función obsoleta. Use abrirCheckoutModal()');
+        abrirCheckoutModal(rentaId, 'N/A', 'N/A', 'N/A', 'N/A');
+    }
+</script>
+</body>
+</html>

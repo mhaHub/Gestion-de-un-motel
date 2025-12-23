@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Corte de Turno - {{ current_user.username }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { background: white; padding: 0; }
+            .print-area { box-shadow: none; border: none; width: 100%; }
+        }
+        .table-corte td, .table-corte th { border: 1px solid #000; padding: 4px 8px; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white p-8 shadow-lg print-area">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-black uppercase tracking-tighter">Corte de Turno</h1>
+            <p class="text-blue-600 font-bold border-b-2 border-blue-600 inline-block px-4">REPORTE RECEPCIÓN</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-8 text-sm">
+            <div>
+                <p><strong>RECEPCIONISTA:</strong> {{ current_user.username }} (ID: {{ current_user.id }})</p>
+                <p><strong>TURNO:</strong> <span class="uppercase">{{ current_user.turno }}</span></p>
+            </div>
+            <div class="text-right">
+                <p><strong>FECHA:</strong> {{ fecha.strftime('%d/%m/%Y') }}</p>
+                <p><strong>SISTEMA:</strong> Halftime Inn</p>
+            </div>
+        </div>
+
+        <table class="w-full table-corte text-sm mb-8">
+            <thead class="bg-gray-100">
+                <tr class="font-bold">
+                    <th colspan="4" class="text-left uppercase">Total de Rentas</th>
+                </tr>
+                <tr>
+                    <th>TIEMPO</th>
+                    <th>HABITACIÓN (CANT)</th>
+                    <th>EXTRA</th>
+                    <th>TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>4 HORAS</td>
+                    <td class="text-center">{{ resumen['4_horas']['cantidad'] }}</td>
+                    <td></td>
+                    <td class="text-right">${{ "{:,.2f}".format(resumen['4_horas']['total']) }}</td>
+                </tr>
+                <tr>
+                    <td>6 HORAS</td>
+                    <td class="text-center">{{ resumen['6_horas']['cantidad'] }}</td>
+                    <td></td>
+                    <td class="text-right">${{ "{:,.2f}".format(resumen['6_horas']['total']) }}</td>
+                </tr>
+                <tr>
+                    <td>12 HORAS</td>
+                    <td class="text-center">{{ resumen['12_horas']['cantidad'] }}</td>
+                    <td></td>
+                    <td class="text-right">${{ "{:,.2f}".format(resumen['12_horas']['total']) }}</td>
+                </tr>
+                <tr class="bg-gray-50 font-bold">
+                    <td colspan="3" class="text-right uppercase">Total Recaudado:</td>
+                    <td class="text-right text-lg">${{ "{:,.2f}".format(total) }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="w-1/2 table-corte text-xs">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th>CONCEPTO</th>
+                    <th>CANTIDAD</th>
+                    <th>IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>$ 1,000.00</td><td></td><td></td></tr>
+                <tr><td>$ 500.00</td><td></td><td></td></tr>
+                <tr><td>$ 200.00</td><td></td><td></td></tr>
+                <tr><td>$ 100.00</td><td></td><td></td></tr>
+                <tr><td>$ 50.00</td><td></td><td></td></tr>
+                <tr><td>$ 20.00</td><td></td><td></td></tr>
+                <tr class="font-bold"><td>DÓLARES</td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <div class="mt-12 grid grid-cols-2 gap-20 text-center text-xs uppercase">
+            <div class="border-t border-black pt-2">Firma Recepcionista</div>
+            <div class="border-t border-black pt-2">Firma Administración</div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-10 right-10 flex flex-col gap-4 no-print">
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-full shadow-2xl flex items-center gap-2 transition-all transform hover:scale-105">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Imprimir Turno (PDF)
+        </button>
+        
+        <a href="{{ url_for('dashboard') }}" class="bg-gray-800 text-white text-center py-2 px-8 rounded-full text-sm font-bold">
+            Volver
+        </a>
+    </div>
+
+</body>
+</html>

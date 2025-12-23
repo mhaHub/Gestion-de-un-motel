@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-in Recepcionista - Motel Halftime Inn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hora-option { transition: all 0.2s ease; }
+        .hora-option:hover { transform: scale(1.05); }
+        .hora-option.selected { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 bg-gray-100">
+        <!-- Header -->
+        <header class="w-full max-w-4xl text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Halftime Inn</h1>
+            <p class="text-xl text-indigo-600 mt-1">Sistema de Recepción - Check-in</p>
+            <p class="text-sm text-gray-500 mt-2">Turno {{ current_user.turno }}</p>
+        </header>
+
+        <div class="w-full max-w-xl mb-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-3 mb-2 rounded-lg shadow-md text-sm {% if category == 'error' %}bg-red-500 text-white{% else %}bg-green-500 text-white{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Main Form Card -->
+        <div class="w-full max-w-xl bg-white p-8 rounded-xl shadow-2xl border-t-4 border-indigo-600">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">Registro de Entrada - Recepcionista</h2>
+
+            <form method="POST" action="{{ url_for('checkin_recepcionista') }}">
+                
+                <!-- Información automática del recepcionista -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-semibold text-blue-700 mb-2">Información Automática</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Recepcionista</label>
+                            <input type="text" value="{{ current_user.username }}" readonly 
+                                   class="w-full p-2 border border-gray-300 bg-gray-100 rounded text-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Turno</label>
+                            <input type="text" value="{{ current_user.turno }}" readonly 
+                                   class="w-full p-2 border border-gray-300 bg-gray-100 rounded text-gray-600">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nombre del Cliente -->
+                <div class="mb-4">
+                    <label for="nombre_cliente" class="block text-gray-600 font-medium mb-2">Comentarios / Nombre Cliente <span class="text-red-500">*</span></label>
+                    <input type="text" id="nombre_cliente" name="nombre_cliente" required 
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" 
+                           placeholder="Ejemplo: Juan Perez">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Número de Habitación -->
+                    <div>
+                        <label for="habitacion_id" class="block text-gray-600 font-medium mb-2">Habitación <span class="text-red-500">*</span></label>
+                        <select id="habitacion_id" name="habitacion_id" required 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
+                            <option value="" disabled selected>Seleccione</option>
+                            {% for h in habitaciones %}
+                                <option value="{{ h.id }}">
+                                    {{ h.numero }} ({{ h.tipo.value if h.tipo.value else h.tipo }}) - ${{ "%.2f"|format(h.precio_base) }}/hr
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Solo habitaciones de tu sucursal DISPONIBLES.</p>
+                    </div>
+
+                    <!-- Horas Predefinidas -->
+                    <div>
+                        <label class="block text-gray-600 font-medium mb-2">Horas Reservadas <span class="text-red-500">*</span></label>
+                        <div class="grid grid-cols-3 gap-2" id="horas-container">
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="4">
+                                <div class="font-semibold">4 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-4">0</span></div>
+                            </button>
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="6">
+                                <div class="font-semibold">6 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-6">0</span></div>
+                            </button>
+                            <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="12">
+                                <div class="font-semibold">12 horas</div>
+                                <div class="text-xs text-gray-500">$<span id="precio-12">0</span></div>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <label class="block text-sm text-gray-600 mb-1">Más horas (personalizado)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="horas_personalizadas" name="horas_personalizadas" min="1" max="24" 
+                                       class="flex-1 p-2 border border-gray-300 rounded-lg focus:border-indigo-500" 
+                                       placeholder="Ej: 8">
+                                <button type="button" id="btn-aplicar-personalizado" 
+                                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
+                                    Aplicar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="horas_reservadas" name="horas_reservadas" required value="">
+                    </div>
+                </div>
+
+                <!-- Control de Acceso -->
+                <div class="mb-6 p-4 border rounded-lg bg-indigo-50/50">
+                    <h3 class="font-semibold text-indigo-700 mb-3">Acceso Vehicular / A Pie</h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-600 font-medium mb-2">Modo de Ingreso</label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="modo_ingreso" value="VEHICULO" 
+                                       class="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" checked>
+                                <span class="ml-2 text-gray-700">🚗 Vehículo</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="modo_ingreso" value="A_PIE" 
+                                       class="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                <span class="ml-2 text-gray-700">👣 A Pie</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="datos-vehiculo-section">
+                        <div class="mb-4">
+                            <label for="placas" class="block text-gray-600 font-medium mb-2">Placas (Opcional)</label>
+                            <input type="text" id="placas" name="placas" maxlength="10" 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 uppercase" 
+                                   placeholder="ABC-123">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón de Check-in -->
+                <button type="submit" id="btn-checkin" 
+                        class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-md transform hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    Confirmar Check-in
+                </button>
+            </form>
+        </div>
+
+        <!-- Enlace de navegación -->
+        <div class="mt-6">
+            <a href="{{ url_for('dashboard_recepcionista') }}" class="text-indigo-600 hover:text-indigo-800 font-medium">← Volver al Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        // Mismo JavaScript simplificado
+        let precioHoraActual = 0;
+        let horasSeleccionadas = 0;
+
+        document.getElementById('habitacion_id').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                const texto = selectedOption.text;
+                const match = texto.match(/\$([0-9.]+)/);
+                if (match) {
+                    precioHoraActual = parseFloat(match[1]);
+                    actualizarPrecios();
+                    verificarFormularioCompleto();
+                }
+            }
+        });
+
+        document.querySelectorAll('.hora-option').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.hora-option').forEach(btn => {
+                    btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-700');
+                });
+                
+                this.classList.add('selected', 'bg-indigo-600', 'text-white');
+                this.classList.remove('bg-white', 'text-gray-700');
+                
+                horasSeleccionadas = this.getAttribute('data-hours');
+                document.getElementById('horas_reservadas').value = horasSeleccionadas;
+                document.getElementById('horas_personalizadas').value = '';
+                
+                verificarFormularioCompleto();
+            });
+        });
+
+        document.getElementById('btn-aplicar-personalizado').addEventListener('click', function() {
+            const horasPersonalizadas = document.getElementById('horas_personalizadas').value;
+            if (horasPersonalizadas && horasPersonalizadas > 0) {
+                document.querySelectorAll('.hora-option').forEach(btn => {
+                    btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-700');
+                });
+                
+                horasSeleccionadas = horasPersonalizadas;
+                document.getElementById('horas_reservadas').value = horasSeleccionadas;
+                
+                verificarFormularioCompleto();
+            } else {
+                alert('Ingrese un número válido de horas');
+            }
+        });
+
+        function actualizarPrecios() {
+            if (precioHoraActual > 0) {
+                document.getElementById('precio-4').textContent = (precioHoraActual * 4).toFixed(2);
+                document.getElementById('precio-6').textContent = (precioHoraActual * 6).toFixed(2);
+                document.getElementById('precio-12').textContent = (precioHoraActual * 12).toFixed(2);
+            }
+        }
+
+        function verificarFormularioCompleto() {
+            const habitacionSeleccionada = document.getElementById('habitacion_id').value;
+            const horasSeleccionadas = document.getElementById('horas_reservadas').value;
+            const nombreCliente = document.getElementById('nombre_cliente').value.trim();
+            
+            const formularioCompleto = habitacionSeleccionada && 
+                                     horasSeleccionadas && 
+                                     nombreCliente;
+            
+            const btnCheckin = document.getElementById('btn-checkin');
+            btnCheckin.disabled = !formularioCompleto;
+            
+            if (formularioCompleto) {
+                btnCheckin.innerHTML = `Confirmar Check-in • $${calcularTotal().toFixed(2)}`;
+            } else {
+                btnCheckin.innerHTML = 'Confirmar Check-in';
+            }
+        }
+
+        function calcularTotal() {
+            if (!precioHoraActual || !horasSeleccionadas) return 0;
+            const horas = parseInt(horasSeleccionadas) || 0;
+            return precioHoraActual * (horas / 4);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarPrecios();
+            verificarFormularioCompleto();
+            
+            const primeraOpcion = document.querySelector('.hora-option[data-hours="4"]');
+            if (primeraOpcion) {
+                primeraOpcion.click();
+            }
+        });
+    </script>
+</body>
+</html>
