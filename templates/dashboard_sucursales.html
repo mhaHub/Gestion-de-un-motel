@@ -155,10 +155,11 @@
                 <p class="text-xs text-gray-500">
                     {{ current_user.rol }}
                     {% if current_user.sucursal_id %}
-                        | Sucursal {{ current_user.sucursal_id }}
-                    {% endif %}
-                    {% if current_user.turno %}
-                        | Turno {{ current_user.turno }}
+                        | {% if current_user.sucursal_nombre %}
+                            {{ current_user.sucursal_nombre }}
+                          {% else %}
+                            Sucursal {{ current_user.sucursal_id }}
+                          {% endif %}
                     {% endif %}
                 </p>
             </div>
@@ -193,34 +194,33 @@
                 {% endif %}
                 
                 <!-- SECCIÓN DE ADMINISTRACIÓN (solo para admins) -->
-{% if current_user.rol in ['ADMIN_GENERAL', 'ADMIN_MOTEL'] %}
-<li class="pt-4 mt-4 border-t border-gray-100">
-    <p class="px-3 text-xs font-bold text-gray-400 uppercase mb-2">Administración</p>
-    
-    <a href="{{ url_for('admin_sucursales') }}" 
-       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition">
-        <i class="fas fa-hotel w-5"></i>
-        Admin Sucursales
-    </a>
-
-    <a href="{% if current_user.rol == 'ADMIN_GENERAL' %}
-                {{ url_for('reportes_general') }}
-              {% elif current_user.rol == 'ADMIN_MOTEL' %}
-                {{ url_for('reportes_sucursal') }}
-              {% endif %}" 
-       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
-        <i class="fas fa-chart-pie w-5"></i>
-        Reportes
-    </a>
-    
-    <a href="{{ url_for('registro_usuario') }}" 
-       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 transition">
-        <i class="fas fa-user-plus w-5"></i>
-        Nuevo Usuario
-    </a>
-
-</li>
-{% endif %}
+                {% if current_user.rol in ['ADMIN_GENERAL', 'ADMIN_MOTEL'] %}
+                <li class="pt-4 mt-4 border-t border-gray-100">
+                    <p class="px-3 text-xs font-bold text-gray-400 uppercase mb-2">Administración</p>
+                    
+                    <a href="{% if current_user.rol == 'ADMIN_GENERAL' %}
+                                {{ url_for('reportes_general') }}
+                              {% elif current_user.rol == 'ADMIN_MOTEL' %}
+                                {{ url_for('reportes_sucursal') }}
+                              {% endif %}" 
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition">
+                        <i class="fas fa-chart-pie w-5"></i>
+                        Reportes
+                    </a>
+                    
+                    <a href="{{ url_for('registro_usuario') }}" 
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-green-50 hover:text-green-700 transition">
+                        <i class="fas fa-user-plus w-5"></i>
+                        Nuevo Usuario
+                    </a> 
+                    
+                    <a href="{{ url_for('reimpresion_cortes') }}" 
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition">
+                        <i class="fas fa-print w-5"></i>
+                        Reimprimir Cortes
+                    </a>
+                </li>
+                {% endif %}
                 
                 <!-- Logout -->
                 <li class="mt-auto pt-4 border-t border-gray-100">
@@ -268,10 +268,11 @@
                                     <i class="fas fa-user-tag mr-1"></i>
                                     {{ current_user.rol }}
                                     {% if current_user.sucursal_id %}
-                                        | Sucursal {{ current_user.sucursal_id }}
-                                    {% endif %}
-                                    {% if current_user.turno %}
-                                        | Turno {{ current_user.turno }}
+                                        | {% if current_user.sucursal_nombre %}
+                                            {{ current_user.sucursal_nombre }}
+                                          {% else %}
+                                            Sucursal {{ current_user.sucursal_id }}
+                                          {% endif %}
                                     {% endif %}
                                 </p>
                             </div>
@@ -330,11 +331,11 @@
                 </div>
             </div>
         </header>
-
-        <!-- TARJETAS DE MÉTRICAS (SIN COBROS EXTRA) -->
-        <div class="w-full max-w-6xl mx-auto px-4">
-            <div class="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        
+        <div class="w-full max-w-6xl">
+            <div class="w-full grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                 
+                <!-- TARJETA 1: Clientes Hoy -->
                 <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500 transform hover:scale-[1.02] transition duration-300">
                     <div class="flex items-center mb-2">
                         <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3">
@@ -345,6 +346,7 @@
                     <p class="text-3xl font-bold text-gray-800">{{ resumen.clientes_dia }}</p>
                 </div>
                 
+                <!-- TARJETA 2: Total Vendido -->
                 <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
                     <div class="flex items-center mb-2">
                         <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
@@ -352,12 +354,27 @@
                         </div>
                         <div>
                             <p class="text-sm font-medium text-gray-500 leading-tight">Total Vendido</p>
-                            <p class="text-[10px] text-green-600 font-bold uppercase leading-tight">Monto a entregar</p>
+                            <p class="text-[10px] text-green-600 font-bold uppercase">Monto a entregar</p>
                         </div>
                     </div>
-                    <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_total_dia) }}</p>
+                    <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+                </div>
+
+                <!-- TARJETA 3: Habitaciones Disponibles -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-blue-500 transform hover:scale-[1.02] transition duration-300">
+                    <div class="flex items-center mb-2">
+                        <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-door-open"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Disponibles</p>
+                            <p class="text-[10px] text-blue-600 font-bold uppercase">Listas para rentar</p>
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.disponibles }}</p>
                 </div>
                 
+                <!-- TARJETA 4: Ocupadas -->
                 <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
                     <div class="flex items-center mb-2">
                         <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mr-3">
@@ -368,16 +385,26 @@
                     <p class="text-3xl font-bold text-gray-800">{{ resumen.ocupadas }}</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 {% if resumen.limpieza > 0 %}limpieza-activa{% endif %}">
+                <!-- TARJETA 5: En Limpieza (CLICKABLE) -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 {% if resumen.limpieza > 0 %}limpieza-activa cursor-pointer{% endif %}" 
+                     id="tarjetaLimpieza" onclick="mostrarHabitacionesLimpieza()">
                     <div class="flex items-center mb-2">
                         <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
                             <i class="fas fa-broom"></i>
                         </div>
-                        <p class="text-sm font-medium text-gray-500">En Limpieza</p>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">En Limpieza</p>
+                            <p class="text-[10px] text-orange-600 font-bold uppercase">
+                                {% if resumen.limpieza > 0 %}
+                                    {{ resumen.limpieza }} habitaciones
+                                {% else %}
+                                    Sin limpieza
+                                {% endif %}
+                            </p>
+                        </div>
                     </div>
                     <p class="text-3xl font-bold text-gray-800">{{ resumen.limpieza }}</p>
                 </div>
-
             </div>
         </div>
 
@@ -387,7 +414,9 @@
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-chart-pie mr-3 text-indigo-600"></i>
                     Distribución de Habitaciones
-                    {% if current_user.rol != 'ADMIN_GENERAL' %}
+                    {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_nombre %}
+                        - {{ current_user.sucursal_nombre }}
+                    {% elif current_user.rol != 'ADMIN_GENERAL' %}
                         - Sucursal {{ current_user.sucursal_id }}
                     {% endif %}
                 </h2>
@@ -504,6 +533,128 @@
         </div>
     </div>
 
+    <!-- MODAL PARA HABITACIONES EN LIMPIEZA -->
+    <div id="limpiezaModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-broom mr-2 text-orange-600"></i>
+                        Habitaciones en Limpieza
+                    </h2>
+                    <button onclick="cerrarLimpiezaModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <div id="contenidoLimpieza" class="space-y-4">
+                    <!-- Las habitaciones se cargarán aquí dinámicamente -->
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                        <p>Cargando habitaciones en limpieza...</p>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end">
+                    <button onclick="cerrarLimpiezaModal()" 
+                            class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA TERMINAR LIMPIEZA -->
+    <div id="terminarLimpiezaModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-check-circle mr-2 text-green-600"></i>
+                        Terminar Limpieza
+                    </h2>
+                    <button onclick="cerrarTerminarLimpiezaModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <form id="formTerminarLimpieza">
+                    <input type="hidden" id="habitacion_id_limpieza" name="habitacion_id">
+                    
+                    <div class="mb-6">
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <div class="flex items-center mb-3">
+                                <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
+                                    <i class="fas fa-door-closed"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Habitación</p>
+                                    <p class="font-bold text-lg" id="numero_habitacion_limpieza">#101</p>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Inicio limpieza:</span>
+                                    <span class="font-medium" id="inicio_limpieza_hora">00:00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Tiempo transcurrido:</span>
+                                    <span class="font-medium text-orange-600" id="tiempo_transcurrido">0 min</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Motivo de terminación temprana</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-3">
+                                <input type="radio" id="motivo_rapido" name="motivo" value="rapido" class="mt-1" checked>
+                                <div>
+                                    <label for="motivo_rapido" class="font-medium">Limpieza completada rápidamente</label>
+                                    <p class="text-sm text-gray-500 mt-1">La habitación estaba en buen estado y se limpió rápido.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <input type="radio" id="motivo_personal" name="motivo" value="personal" class="mt-1">
+                                <div>
+                                    <label for="motivo_personal" class="font-medium">Personal adicional disponible</label>
+                                    <p class="text-sm text-gray-500 mt-1">Contamos con más personal para acelerar la limpieza.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <input type="radio" id="motivo_otro" name="motivo" value="otro" class="mt-1">
+                                <div>
+                                    <label for="motivo_otro" class="font-medium">Otro motivo</label>
+                                    <p class="text-sm text-gray-500 mt-1">Especificar en observaciones.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Observaciones</h3>
+                        <textarea id="observaciones_limpieza" name="observaciones" rows="3" 
+                                  class="w-full border rounded-lg p-3" 
+                                  placeholder="Notas sobre la limpieza o estado de la habitación..."></textarea>
+                    </div>
+                    
+                    <div class="flex gap-3 justify-end">
+                        <button type="button" onclick="cerrarTerminarLimpiezaModal()" 
+                                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="procesarTerminarLimpieza()" 
+                                class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700">
+                            <i class="fas fa-check mr-2"></i>
+                            Terminar Limpieza
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PARA CHECKLIST DE SALIDA -->
     <div id="checkoutModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -573,7 +724,7 @@
                                 <div class="flex-1">
                                     <label for="equipo_danado" class="font-medium">Equipo dañado (TV, A/C)</label>
                                     <div class="mt-2">
-                                        <input type="number" id="equipo_danado_monto" name="equipo_danado_monto" min="0" step="0.01" placeholder="0.00" 
+                                        <input type="number" id="equipo_danado_monto" name="equipo_danado_monto" min="0, step="0.01" placeholder="0.00" 
                                                class="w-full border rounded-lg p-2 monto-input" oninput="calcularTotal()" disabled>
                                     </div>
                                 </div>
@@ -862,6 +1013,182 @@
                     alert(data.message);
                     cerrarModal();
                     location.reload(); // Recargar la página para actualizar
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error en la solicitud: ' + error);
+            });
+        }
+
+        // Funciones para el sistema de limpieza
+        function mostrarHabitacionesLimpieza() {
+            if ({{ resumen.limpieza }} <= 0) return;
+            
+            const modal = document.getElementById('limpiezaModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                cargarHabitacionesLimpieza();
+            }
+        }
+
+        function cerrarLimpiezaModal() {
+            const modal = document.getElementById('limpiezaModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function cerrarTerminarLimpiezaModal() {
+            const modal = document.getElementById('terminarLimpiezaModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function cargarHabitacionesLimpieza() {
+            const contenido = document.getElementById('contenidoLimpieza');
+            if (!contenido) return;
+            
+            contenido.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                    <p>Cargando habitaciones en limpieza...</p>
+                </div>
+            `;
+            
+            // Hacer solicitud para obtener habitaciones en limpieza
+            fetch('/api/habitaciones_limpieza')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.habitaciones && data.habitaciones.length > 0) {
+                        contenido.innerHTML = '';
+                        
+                        data.habitaciones.forEach(hab => {
+                            const minutosTrans = hab.minutos_transcurridos || 0;
+                            const tiempoTexto = minutosTrans < 60 
+                                ? `${minutosTrans} min` 
+                                : `${Math.floor(minutosTrans / 60)}h ${minutosTrans % 60}min`;
+                            
+                            const card = document.createElement('div');
+                            card.className = 'bg-white p-4 rounded-lg shadow border border-orange-200';
+                            card.innerHTML = `
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center">
+                                        <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
+                                            <i class="fas fa-door-closed text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-xl font-bold text-gray-800">#${hab.numero}</h3>
+                                            <span class="text-xs font-bold px-2 py-1 rounded-full ${hab.tipo === 'JACUZZI' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">
+                                                ${hab.tipo}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-600">Tiempo:</div>
+                                        <div class="font-bold text-orange-600">${tiempoTexto}</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-sm text-gray-600 space-y-1 mb-4">
+                                    <div class="flex justify-between">
+                                        <span>Inicio:</span>
+                                        <span class="font-medium">${hab.inicio_limpieza_formatted || hab.inicio_limpieza}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Encargado:</span>
+                                        <span class="font-medium">${hab.encargado || 'No asignado'}</span>
+                                    </div>
+                                </div>
+                                
+                                <button onclick="abrirTerminarLimpiezaModal(${hab.id}, ${hab.numero}, '${hab.inicio_limpieza || ''}', ${minutosTrans})" 
+                                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-300">
+                                    <i class="fas fa-check mr-2"></i>
+                                    Terminar Limpieza
+                                </button>
+                            `;
+                            
+                            contenido.appendChild(card);
+                        });
+                    } else {
+                        contenido.innerHTML = `
+                            <div class="text-center py-10">
+                                <i class="fas fa-check-circle text-5xl text-green-400 mb-4"></i>
+                                <p class="text-xl font-semibold text-gray-500">
+                                    No hay habitaciones en limpieza
+                                </p>
+                                <p class="text-gray-400 mt-2">
+                                    Todas las habitaciones están disponibles u ocupadas.
+                                </p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    contenido.innerHTML = `
+                        <div class="text-center py-10">
+                            <i class="fas fa-exclamation-triangle text-5xl text-red-400 mb-4"></i>
+                            <p class="text-xl font-semibold text-gray-500">
+                                Error al cargar las habitaciones
+                            </p>
+                            <p class="text-gray-400 mt-2">
+                                Intenta de nuevo más tarde.
+                            </p>
+                        </div>
+                    `;
+                });
+        }
+
+        function abrirTerminarLimpiezaModal(habitacionId, numero, inicioLimpieza, minutosTranscurridos) {
+            const modal = document.getElementById('terminarLimpiezaModal');
+            if (modal) {
+                document.getElementById('habitacion_id_limpieza').value = habitacionId;
+                document.getElementById('numero_habitacion_limpieza').textContent = '#' + numero;
+                
+                // Formatear hora de inicio
+                let inicioFormatted = inicioLimpieza;
+                if (inicioLimpieza && inicioLimpieza.includes(' ')) {
+                    inicioFormatted = inicioLimpieza.split(' ')[1].substring(0, 5);
+                }
+                document.getElementById('inicio_limpieza_hora').textContent = inicioFormatted || '--:--';
+                
+                // Formatear tiempo transcurrido
+                let tiempoTexto = minutosTranscurridos + ' min';
+                if (minutosTranscurridos >= 60) {
+                    const horas = Math.floor(minutosTranscurridos / 60);
+                    const minutos = minutosTranscurridos % 60;
+                    tiempoTexto = `${horas}h ${minutos}min`;
+                }
+                document.getElementById('tiempo_transcurrido').textContent = tiempoTexto;
+                
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function procesarTerminarLimpieza() {
+            const habitacionId = document.getElementById('habitacion_id_limpieza').value;
+            const motivo = document.querySelector('input[name="motivo"]:checked').value;
+            const observaciones = document.getElementById('observaciones_limpieza').value;
+            
+            const formData = new FormData();
+            formData.append('habitacion_id', habitacionId);
+            formData.append('motivo', motivo);
+            formData.append('observaciones', observaciones);
+            
+            fetch('/api/terminar_limpieza', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    cerrarTerminarLimpiezaModal();
+                    cerrarLimpiezaModal();
+                    location.reload(); // Recargar para actualizar contadores
                 } else {
                     alert('Error: ' + data.error);
                 }

@@ -11,6 +11,9 @@ class User(UserMixin):
         self.sucursal_id = data['sucursal_id']
         self.turno = data['turno']
         self.is_admin = bool(data.get('is_admin', False))
+        
+        # AGREGAR ESTA LÍNEA:
+        self.sucursal_nombre = data.get('sucursal_nombre')  # <-- NUEVO
 
     def check_password(self, password):
         """Verifica contraseña usando bcrypt - VERSIÓN CORREGIDA"""
@@ -44,6 +47,15 @@ class User(UserMixin):
             import traceback
             traceback.print_exc()
             return False
+
+    def es_admin_general(self):
+        return self.rol == 'ADMIN_GENERAL'
+
+    def es_admin_motel(self):
+        return self.rol == 'ADMIN_MOTEL'
+
+    def es_recepcionista(self):
+        return self.rol == 'RECEPCIONISTA'
 
     def es_admin_general(self):
         return self.rol == 'ADMIN_GENERAL'

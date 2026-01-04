@@ -11,7 +11,7 @@ def reset_database():
         host='localhost',
         user='root',
         password='12345678',  # Tu contraseña de MySQL
-        db='hotel',
+        db='Halftime_Inn',
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )

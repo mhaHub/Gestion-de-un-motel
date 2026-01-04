@@ -26,7 +26,7 @@
         <div class="grid grid-cols-2 gap-4 mb-8 text-sm">
             <div>
                 <p><strong>RECEPCIONISTA:</strong> {{ usuario_reporte | upper }}</p>
-                <p><strong>TURNO:</strong> <span class="uppercase">{{ current_user.turno if not es_reimpresion else 'CONSULTA' }}</span></p>
+                <p><strong>TURNO:</strong> <span class="uppercase">{{ current_user.turno if not es_reimpresion else turno_historico }}</span></p>
             </div>
             <div class="text-right">
                 <p><strong>FECHA:</strong> {{ fecha if es_reimpresion else fecha.strftime('%d/%m/%Y') }}</p>
@@ -107,7 +107,7 @@
             {{ 'Descargar Copia' if es_reimpresion else 'Imprimir y Finalizar Turno' }}
         </button>
         
-        <button onclick="window.history.back()" class="bg-gray-800 text-white text-center py-2 px-8 rounded-full text-sm font-bold shadow-lg">
+        <button onclick="window.history.back()" class="bg-gray-800 text-white text-center py-2 px-8 rounded-full text-sm font-bold shadow-lg hover:bg-black transition-colors">
             Regresar
         </button>
     </div>
@@ -127,7 +127,6 @@
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
-                // REDIRECCIÓN Y CIERRE DE SESIÓN: Solo si no es una reimpresión histórica
                 {% if not es_reimpresion %}
                 setTimeout(() => {
                     alert("Corte generado exitosamente. Por seguridad, se requiere iniciar sesión nuevamente.");

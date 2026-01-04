@@ -6,6 +6,19 @@
     <title>Nuevo Usuario - Halftime Inn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .sucursal-todas {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-style: italic;
+        }
+        .horario-establecido {
+            font-size: 0.9em;
+            color: #6b7280;
+            font-weight: normal;
+            margin-left: 4px;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-6">
     <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg border-t-4 border-indigo-600">
@@ -28,7 +41,7 @@
           {% endif %}
         {% endwith %}
         
-        <form method="POST">
+        <form method="POST" id="usuarioForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Username</label>
@@ -68,7 +81,7 @@
 
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Rol del Usuario</label>
-                    <select name="rol" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition">
+                    <select name="rol" id="rolSelect" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition">
                         <option value="RECEPCIONISTA">Recepcionista</option>
                         <option value="ADMIN_MOTEL">Administrador de Motel (Sucursal)</option>
                         
@@ -80,15 +93,19 @@
 
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Sucursal Asignada</label>
-                    <select name="sucursal_id" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition 
-                            {% if current_user.rol == 'ADMIN_MOTEL' %}bg-gray-50 cursor-not-allowed{% endif %}">
+                    <select name="sucursal_id" id="sucursalSelect" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition 
+                            {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_id %}bg-gray-50 cursor-not-allowed{% endif %}">
+                        <!-- Opción "Todas" para ADMIN_GENERAL (oculta por defecto) -->
+                        <option value="0" id="todasOption" class="sucursal-todas" style="display: none;">Todas las sucursales (Sin asignar)</option>
+                        
+                        <!-- Opciones normales de sucursales -->
                         {% for s in sucursales %}
                         <option value="{{ s.id }}" {% if current_user.sucursal_id == s.id %}selected{% endif %}>
                             {{ s.nombre }}
                         </option>
                         {% endfor %}
                     </select>
-                    {% if current_user.rol == 'ADMIN_MOTEL' %}
+                    {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_id %}
                     <p class="text-xs text-indigo-500 mt-2 italic">
                         <i class="fas fa-info-circle mr-1"></i>Como Admin de Motel, solo puedes registrar personal para tu sucursal.
                     </p>
@@ -97,11 +114,57 @@
 
                 <div>
                     <label class="block text-gray-700 font-bold mb-2">Turno Laboral</label>
-                    <select name="turno" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition">
-                        <option value="MATUTINO">Matutino (7:00 AM - 3:00 PM)</option>
-                        <option value="VESPERTINO">Vespertino (3:00 PM - 11:00 PM)</option>
-                        <option value="NOCTURNO">Nocturno (11:00 PM - 7:00 AM)</option>
-                    </select>
+                    <div class="flex space-x-2">
+                        <select name="turno" id="turnoSelect" class="w-1/2 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition">
+                            <!-- Opciones con horarios establecidos -->
+                            <option value="MATUTINO" data-horario="7:00 AM - 3:00 PM">
+                                Matutino <span class="horario-establecido">(7:00 AM - 3:00 PM)</span>
+                            </option>
+                            <option value="VESPERTINO" data-horario="3:00 PM - 11:00 PM">
+                                Vespertino <span class="horario-establecido">(3:00 PM - 11:00 PM)</span>
+                            </option>
+                            <option value="NOCTURNO" data-horario="11:00 PM - 7:00 AM">
+                                Nocturno <span class="horario-establecido">(11:00 PM - 7:00 AM)</span>
+                            </option>
+                            <option value="CUSTOM" data-horario="">
+                                Personalizado...
+                            </option>
+                        </select>
+                        
+                        <!-- Campo para editar horario personalizado -->
+                        <div class="w-1/2">
+                            <div class="relative">
+                                <input type="text" name="turno_personalizado" id="turnoPersonalizado" 
+                                       class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition hidden"
+                                       placeholder="Ej: 8:00-16:00" maxlength="50">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <i class="fas fa-edit text-gray-400"></i>
+                                </div>
+                            </div>
+                            <!-- Botón para editar horarios establecidos -->
+                            <button type="button" id="editarHorarioBtn" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 hidden">
+                                <i class="fas fa-pencil-alt mr-1"></i> Editar horario
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 italic" id="turnoDescripcion">
+                        <i class="fas fa-clock mr-1"></i> Horario: 7:00 AM - 3:00 PM
+                    </p>
+                    <div id="horarioInputGroup" class="mt-2 hidden">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Hora inicio</label>
+                                <input type="time" id="horaInicio" class="w-full p-2 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Hora fin</label>
+                                <input type="time" id="horaFin" class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+                        <button type="button" id="guardarHorarioBtn" class="mt-2 w-full bg-green-500 text-white p-2 rounded text-sm hover:bg-green-600">
+                            <i class="fas fa-save mr-1"></i> Guardar horario
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -117,13 +180,263 @@
     </div>
 
     <script>
-        {% if current_user.rol == 'ADMIN_MOTEL' %}
-        document.getElementsByName('sucursal_id')[0].addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            this.blur();
-            window.focus();
+        document.addEventListener('DOMContentLoaded', function() {
+            const rolSelect = document.getElementById('rolSelect');
+            const sucursalSelect = document.getElementById('sucursalSelect');
+            const todasOption = document.getElementById('todasOption');
+            const turnoSelect = document.getElementById('turnoSelect');
+            const turnoPersonalizado = document.getElementById('turnoPersonalizado');
+            const turnoDescripcion = document.getElementById('turnoDescripcion');
+            const editarHorarioBtn = document.getElementById('editarHorarioBtn');
+            const horarioInputGroup = document.getElementById('horarioInputGroup');
+            const horaInicio = document.getElementById('horaInicio');
+            const horaFin = document.getElementById('horaFin');
+            const guardarHorarioBtn = document.getElementById('guardarHorarioBtn');
+            const form = document.getElementById('usuarioForm');
+            
+            // Configuración de horarios establecidos por defecto
+            const horariosEstablecidos = {
+                'MATUTINO': '7:00 AM - 3:00 PM',
+                'VESPERTINO': '3:00 PM - 11:00 PM', 
+                'NOCTURNO': '11:00 PM - 7:00 AM'
+            };
+            
+            // Convertir formato AM/PM a 24h para input type="time"
+            function ampmTo24h(ampmTime) {
+                const [time, modifier] = ampmTime.split(' ');
+                let [hours, minutes] = time.split(':');
+                
+                if (hours === '12') {
+                    hours = '00';
+                }
+                
+                if (modifier === 'PM') {
+                    hours = parseInt(hours, 10) + 12;
+                }
+                
+                return `${hours.padStart(2, '0')}:${minutes}`;
+            }
+            
+            // Convertir 24h a formato AM/PM
+            function format24hToAmPm(time24h) {
+                if (!time24h) return '';
+                
+                const [hours, minutes] = time24h.split(':');
+                let hour = parseInt(hours, 10);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12 || 12;
+                
+                return `${hour}:${minutes} ${ampm}`;
+            }
+            
+            // Parsear horario en formato "7:00 AM - 3:00 PM" a inicio y fin
+            function parseHorario(horarioStr) {
+                if (!horarioStr) return { inicio: '', fin: '' };
+                
+                const partes = horarioStr.split(' - ');
+                if (partes.length === 2) {
+                    return {
+                        inicio: ampmTo24h(partes[0].trim()),
+                        fin: ampmTo24h(partes[1].trim())
+                    };
+                }
+                return { inicio: '', fin: '' };
+            }
+            
+            // Configuración para Admin de Motel
+            {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_id %}
+            sucursalSelect.disabled = true;
+            sucursalSelect.value = '{{ current_user.sucursal_id }}';
+            {% endif %}
+            
+            // 1. Manejar cambio de rol
+            rolSelect.addEventListener('change', function() {
+                if (this.value === 'ADMIN_GENERAL') {
+                    todasOption.style.display = 'block';
+                    todasOption.selected = true;
+                    
+                    Array.from(sucursalSelect.options).forEach(option => {
+                        if (option.value !== '0') {
+                            option.style.display = 'none';
+                        }
+                    });
+                    
+                    sucursalSelect.disabled = false;
+                } else {
+                    todasOption.style.display = 'none';
+                    
+                    Array.from(sucursalSelect.options).forEach(option => {
+                        option.style.display = 'block';
+                    });
+                    
+                    {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_id %}
+                    if (this.value !== 'ADMIN_GENERAL') {
+                        sucursalSelect.disabled = true;
+                        sucursalSelect.value = '{{ current_user.sucursal_id }}';
+                    }
+                    {% else %}
+                    sucursalSelect.disabled = false;
+                    
+                    if (sucursalSelect.value === '0') {
+                        const primeraSucursal = sucursalSelect.querySelector('option[value!="0"]');
+                        if (primeraSucursal) {
+                            primeraSucursal.selected = true;
+                        }
+                    }
+                    {% endif %}
+                }
+            });
+            
+            // 2. Manejar cambio de turno
+            turnoSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const horario = selectedOption.getAttribute('data-horario');
+                
+                if (this.value === 'CUSTOM') {
+                    // Modo personalizado
+                    turnoPersonalizado.classList.remove('hidden');
+                    turnoPersonalizado.required = true;
+                    editarHorarioBtn.classList.add('hidden');
+                    horarioInputGroup.classList.add('hidden');
+                    
+                    // Mostrar descripción del horario personalizado si ya tiene valor
+                    if (turnoPersonalizado.value) {
+                        turnoDescripcion.innerHTML = `<i class="fas fa-clock mr-1"></i> Horario: ${turnoPersonalizado.value}`;
+                    } else {
+                        turnoDescripcion.innerHTML = '<i class="fas fa-clock mr-1"></i> Escribe el horario personalizado';
+                    }
+                    
+                    turnoPersonalizado.focus();
+                } else {
+                    // Modo con horario establecido
+                    turnoPersonalizado.classList.add('hidden');
+                    turnoPersonalizado.required = false;
+                    editarHorarioBtn.classList.remove('hidden');
+                    horarioInputGroup.classList.add('hidden');
+                    
+                    // Mostrar horario establecido
+                    turnoDescripcion.innerHTML = `<i class="fas fa-clock mr-1"></i> Horario: ${horario}`;
+                    
+                    // Llenar campos de edición con el horario actual
+                    const { inicio, fin } = parseHorario(horario);
+                    horaInicio.value = inicio;
+                    horaFin.value = fin;
+                }
+            });
+            
+            // 3. Botón para editar horario establecido
+            editarHorarioBtn.addEventListener('click', function() {
+                horarioInputGroup.classList.toggle('hidden');
+                
+                if (!horarioInputGroup.classList.contains('hidden')) {
+                    const selectedOption = turnoSelect.options[turnoSelect.selectedIndex];
+                    const horario = selectedOption.getAttribute('data-horario');
+                    const { inicio, fin } = parseHorario(horario);
+                    
+                    horaInicio.value = inicio;
+                    horaFin.value = fin;
+                }
+            });
+            
+            // 4. Guardar horario editado
+            guardarHorarioBtn.addEventListener('click', function() {
+                const inicio = horaInicio.value;
+                const fin = horaFin.value;
+                
+                if (!inicio || !fin) {
+                    alert('Por favor ingresa ambas horas');
+                    return;
+                }
+                
+                // Formatear nuevo horario
+                const nuevoHorario = `${format24hToAmPm(inicio)} - ${format24hToAmPm(fin)}`;
+                
+                // Actualizar el select
+                const selectedOption = turnoSelect.options[turnoSelect.selectedIndex];
+                selectedOption.setAttribute('data-horario', nuevoHorario);
+                
+                // Actualizar la descripción
+                selectedOption.innerHTML = `${selectedOption.text.split('(')[0]} <span class="horario-establecido">(${nuevoHorario})</span>`;
+                
+                // Actualizar la descripción debajo
+                turnoDescripcion.innerHTML = `<i class="fas fa-clock mr-1"></i> Horario: ${nuevoHorario}`;
+                
+                // Guardar en localStorage para persistencia
+                const turnoValue = turnoSelect.value;
+                localStorage.setItem(`horario_${turnoValue}`, nuevoHorario);
+                
+                // Ocultar editor
+                horarioInputGroup.classList.add('hidden');
+                
+                alert('Horario actualizado exitosamente');
+            });
+            
+            // 5. Manejar envío del formulario
+            form.addEventListener('submit', function(e) {
+                // Validar turno personalizado
+                if (turnoSelect.value === 'CUSTOM' && !turnoPersonalizado.value.trim()) {
+                    e.preventDefault();
+                    alert('Por favor escribe el horario personalizado');
+                    turnoPersonalizado.focus();
+                    return;
+                }
+                
+                // Para turnos establecidos, usar el horario del data attribute
+                if (turnoSelect.value !== 'CUSTOM') {
+                    const selectedOption = turnoSelect.options[turnoSelect.selectedIndex];
+                    const horario = selectedOption.getAttribute('data-horario');
+                    
+                    // Crear un campo oculto para enviar el horario completo
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'horario_completo';
+                    hiddenInput.value = horario;
+                    form.appendChild(hiddenInput);
+                }
+                
+                // Validar sucursal según rol
+                if (rolSelect.value !== 'ADMIN_GENERAL') {
+                    const sucursalValue = sucursalSelect.value;
+                    if (!sucursalValue || sucursalValue === '0') {
+                        e.preventDefault();
+                        alert('Por favor selecciona una sucursal para este rol');
+                        sucursalSelect.focus();
+                        return;
+                    }
+                }
+            });
+            
+            // 6. Cargar horarios guardados de localStorage
+            function cargarHorariosGuardados() {
+                ['MATUTINO', 'VESPERTINO', 'NOCTURNO'].forEach(turno => {
+                    const horarioGuardado = localStorage.getItem(`horario_${turno}`);
+                    if (horarioGuardado) {
+                        const option = turnoSelect.querySelector(`option[value="${turno}"]`);
+                        if (option) {
+                            option.setAttribute('data-horario', horarioGuardado);
+                            option.innerHTML = `${option.text.split('(')[0]} <span class="horario-establecido">(${horarioGuardado})</span>`;
+                            
+                            // Si este es el turno seleccionado, actualizar descripción
+                            if (turnoSelect.value === turno) {
+                                turnoDescripcion.innerHTML = `<i class="fas fa-clock mr-1"></i> Horario: ${horarioGuardado}`;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 7. Inicializar
+            rolSelect.dispatchEvent(new Event('change'));
+            turnoSelect.dispatchEvent(new Event('change'));
+            cargarHorariosGuardados();
+            
+            {% if current_user.rol == 'ADMIN_MOTEL' and current_user.sucursal_id %}
+            const opcionSucursal = sucursalSelect.querySelector(`option[value="{{ current_user.sucursal_id }}"]`);
+            if (opcionSucursal) {
+                opcionSucursal.selected = true;
+            }
+            {% endif %}
         });
-        {% endif %}
     </script>
 </body>
 </html>

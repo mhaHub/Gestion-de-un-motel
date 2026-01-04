@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Administración de Infraestructura - Halftime Inn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <div class="max-w-7xl mx-auto p-4 lg:p-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight italic uppercase">Panel Administrativo</h1>
+                <a href="{{ url_for('dashboard') }}" class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2 mt-1 transition">
+                    <i class="fas fa-arrow-left text-xs"></i> Regresar al Menú
+                </a>
+            </div>
+            <div class="flex gap-4 w-full md:w-auto">
+                <div class="flex-1 md:flex-none bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-center">
+                    <p class="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Total Vendido Hoy</p>
+                    <p class="text-2xl font-bold text-emerald-700">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+                </div>
+                <div class="flex-1 md:flex-none bg-orange-50 border border-orange-100 p-4 rounded-xl text-center">
+                    <p class="text-[10px] text-orange-600 font-black uppercase tracking-widest">Por Entregar</p>
+                    <p class="text-2xl font-bold text-orange-700">{{ resumen.limpieza }} <span class="text-xs font-medium">Habs.</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex space-x-1 bg-slate-200/50 p-1 rounded-xl mb-8 w-fit">
+            <button onclick="switchTab('tab-sucursales')" id="btn-sucursales" class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all bg-white shadow-sm text-indigo-600">Sucursales</button>
+            <button onclick="switchTab('tab-habitaciones')" id="btn-habitaciones" class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700">Habitaciones</button>
+            <button onclick="switchTab('tab-usuarios')" id="btn-usuarios" class="px-8 py-2.5 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700">Usuarios</button>
+        </div>
+
+        <div id="tab-sucursales" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                    <h3 id="suc-title" class="text-xl font-bold mb-6"><i class="fas fa-building text-indigo-600 mr-2"></i>Nueva Sucursal</h3>
+                    <form method="POST" id="form-sucursal" class="space-y-4">
+                        <input type="hidden" name="tipo_formulario" value="sucursal">
+                        <input type="hidden" name="id_sucursal" id="suc_id">
+                        <input type="hidden" name="accion" id="suc_accion" value="guardar">
+                        
+                        <input type="text" name="nombre" id="suc_nombre" class="w-full p-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Nombre de Sucursal" required>
+                        <input type="text" name="direccion" id="suc_dir" class="w-full p-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Dirección" required>
+                        
+                        <div class="flex gap-2">
+                            <button type="submit" id="btn-submit-suc" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg transition-all">Guardar</button>
+                            <button type="button" id="btn-del-suc" onclick="confirmDeleteSucursal()" class="hidden bg-red-100 text-red-600 px-4 rounded-xl hover:bg-red-200 transition-all">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        <button type="button" onclick="resetSucForm()" class="w-full text-slate-400 text-xs mt-2 uppercase font-bold tracking-widest">Limpiar / Nuevo</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Nombre</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Ubicación</th>
+                                <th class="p-4 text-center text-xs font-bold text-slate-400 uppercase">Editar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sucursales-list" class="divide-y">
+                            {% for s in sucursales if s.status == 1 %}
+                            <tr class="hover:bg-slate-50 transition" id="sucursal-{{ s.id }}">
+                                <td class="p-4 font-bold">{{ s.nombre }}</td>
+                                <td class="p-4 text-slate-500 text-sm">{{ s.direccion }}</td>
+                                <td class="p-4 text-center">
+                                    <button onclick="editSucursal('{{s.id}}','{{s.nombre}}','{{s.direccion}}')" class="text-indigo-600 p-2 hover:bg-indigo-100 rounded-lg transition">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-habitaciones" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                    <h3 id="hab-title" class="text-xl font-bold mb-6"><i class="fas fa-door-open text-emerald-600 mr-2"></i>Gestionar Habitación</h3>
+                    <form id="form-habitacion" class="space-y-4" onsubmit="handleHabitacionSubmit(event); return false;">
+                        <input type="hidden" name="tipo_formulario" value="habitacion">
+                        <input type="hidden" name="id_habitacion" id="hab_id">
+                        <input type="hidden" name="accion" id="hab_accion" value="guardar">
+
+                        <select name="sucursal_id" id="hab_suc_id" onchange="fetchHabitaciones(this.value)" class="w-full p-3 bg-slate-50 border rounded-xl">
+                            <option value="">Seleccione Sucursal...</option>
+                            {% for s in sucursales if s.status == 1 %}
+                            <option value="{{ s.id }}">{{ s.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <input type="text" name="nombre_personalizado" id="hab_nombre" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Nombre personalizado (ej: Suite Amor)" required>
+                        
+                       <div class="mb-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 ml-2 uppercase">Tipo de Habitación *</label>
+                                <select name="tipo" id="hab_tipo" class="w-full p-3 bg-slate-50 border rounded-xl" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="SENCILLA">Sencilla</option>
+                                    <option value="JACUZZI">Jacuzzi</option>
+                                </select>
+                            </div>
+                        </div>
+
+<!-- NUEVOS CAMPOS PARA PRECIOS POR HORAS ESPECÍFICAS -->
+<div class="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Precios por Paquetes de Horas</p>
+    
+    <div class="grid grid-cols-3 gap-3">
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 ml-1 block">4 Horas</label>
+            <input type="number" name="precio_4_horas" id="hab_p4h" step="0.01" min="0" class="w-full p-2.5 bg-white border rounded-lg text-sm" placeholder="Precio 4h">
+        </div>
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 ml-1 block">6 Horas</label>
+            <input type="number" name="precio_6_horas" id="hab_p6h" step="0.01" min="0" class="w-full p-2.5 bg-white border rounded-lg text-sm" placeholder="Precio 6h">
+        </div>
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 ml-1 block">12 Horas</label>
+            <input type="number" name="precio_12_horas" id="hab_p12h" step="0.01" min="0" class="w-full p-2.5 bg-white border rounded-lg text-sm" placeholder="Precio 12h">
+        </div>
+    </div>
+</div>
+
+                        <div class="flex gap-2">
+                            <button type="submit" id="btn-submit-hab" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg transition-all">Guardar Habitación</button>
+                            <button type="button" id="btn-del-hab" onclick="confirmDeleteHabitacion()" class="hidden bg-red-100 text-red-600 px-4 rounded-xl hover:bg-red-200 transition-all">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        <button type="button" onclick="resetHabForm()" class="w-full text-slate-400 text-xs mt-2 uppercase font-bold tracking-widest">Nueva / Limpiar</button>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div id="hab-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <p class="col-span-full text-center text-slate-400 py-20 italic">Selecciona una sucursal para filtrar las habitaciones activas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA DE USUARIOS (SOLO PARA VER Y DESACTIVAR) -->
+        <div id="tab-usuarios" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b bg-slate-50">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-slate-700 text-lg">
+                                <i class="fas fa-users text-purple-600 mr-2"></i>Usuarios Activos del Sistema
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-1">
+                                <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                                Solo se muestran administradores de sucursal y recepcionistas. El administrador general no puede ser desactivado.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm text-slate-500">
+                                <i class="fas fa-user-check text-green-500 mr-1"></i>
+                                Activos: <span id="contador-usuarios">{{ usuarios|selectattr('status', 'equalto', 1)|selectattr('rol', 'in', ['ADMIN_MOTEL', 'RECEPCIONISTA'])|list|length }}</span>
+                            </span>
+                            <select id="filtro-sucursal-usu" onchange="filtrarUsuarios(this.value)" class="text-sm p-2 border rounded-lg bg-white">
+                                <option value="0">Todas las sucursales</option>
+                                {% for s in sucursales if s.status == 1 %}
+                                <option value="{{ s.id }}">{{ s.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Usuario</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Rol</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Sucursal/Turno</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Fecha de Creación</th>
+                                <th class="p-4 text-center text-xs font-bold text-slate-400 uppercase">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios" class="divide-y">
+                            {% for u in usuarios if u.status == 1 and u.rol in ['ADMIN_MOTEL', 'RECEPCIONISTA'] %}
+                            <tr class="hover:bg-slate-50 transition" id="usuario-{{ u.id }}">
+                                <td class="p-4">
+                                    <div class="font-bold text-slate-800">{{ u.username }}</div>
+                                    <div class="text-xs text-slate-500">{{ u.email }}</div>
+                                </td>
+                                <td class="p-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                        {% if u.rol == 'ADMIN_MOTEL' %}bg-blue-100 text-blue-800 border border-blue-200
+                                        {% else %}bg-emerald-100 text-emerald-800 border border-emerald-200{% endif %}">
+                                        {% if u.rol == 'ADMIN_MOTEL' %}
+                                            <i class="fas fa-building mr-1"></i>Admin Sucursal
+                                        {% else %}
+                                            <i class="fas fa-user-check mr-1"></i>Recepcionista
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td class="p-4">
+                                    <div class="text-slate-700 text-sm">{{ u.sucursal_nombre or 'Sin asignar' }}</div>
+                                    {% if u.turno %}
+                                    <div class="text-xs text-slate-500">
+                                        <i class="fas fa-clock mr-1"></i>{{ u.turno }}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="p-4 text-slate-600 text-sm">
+                                    {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else 'N/A' }}
+                                </td>
+                                <td class="p-4 text-center">
+                                    <button onclick="desactivarUsuario('{{u.id}}', '{{u.username}}', '{{u.rol}}')" 
+                                            class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-100 transition-all border border-red-200 text-sm flex items-center gap-2 mx-auto">
+                                        <i class="fas fa-user-slash"></i>
+                                        Desactivar
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400">
+                                    <i class="fas fa-users-slash text-3xl mb-2"></i>
+                                    <p class="text-lg">No hay usuarios activos</p>
+                                    <p class="text-sm mt-1">No hay administradores de sucursal o recepcionistas activos en el sistema.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para mostrar mensajes de éxito/error
+        function mostrarMensaje(tipo, mensaje) {
+            const alert = document.createElement('div');
+            alert.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 animate-slide-in ${tipo === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'}`;
+            alert.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i class="fas ${tipo === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    <span>${mensaje}</span>
+                </div>
+            `;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.classList.add('animate-slide-out');
+                setTimeout(() => alert.remove(), 500);
+            }, 3000);
+        }
+
+        // ========== FUNCIONES PARA HABITACIONES (SIN RECARGAR) ==========
+async function handleHabitacionSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const btnSubmit = document.getElementById('btn-submit-hab');
+    const originalText = btnSubmit.textContent;
+    const sucursalId = document.getElementById('hab_suc_id').value;
+    const accion = document.getElementById('hab_accion').value;
+    
+    // Solo validar sucursal si es acción de guardar (crear/editar)
+    if (accion === 'guardar') {
+        if (!sucursalId) {
+            mostrarMensaje('error', 'Debes seleccionar una sucursal');
+            return;
+        }
+        
+        // Validar otros campos solo para guardar
+        if (!document.getElementById('hab_nombre').value.trim()) {
+            mostrarMensaje('error', 'El nombre personalizado es requerido');
+            return;
+        }
+        
+        if (!document.getElementById('hab_tipo').value) {
+            mostrarMensaje('error', 'El tipo es requerido');
+            return;
+        }
+        
+        // VALIDACIÓN DE PRECIOS POR PAQUETES (NO PRECIO BASE)
+        const precio4h = document.getElementById('hab_p4h').value;
+        const precio6h = document.getElementById('hab_p6h').value;
+        const precio12h = document.getElementById('hab_p12h').value;
+        
+        // Verificar que al menos un precio esté configurado
+        if (!precio4h && !precio6h && !precio12h) {
+            mostrarMensaje('error', 'Debes configurar al menos un precio para paquetes de horas (4h, 6h o 12h)');
+            return;
+        }
+        
+        // Validar que los precios sean mayores a 0 si están configurados
+        if (precio4h && parseFloat(precio4h) <= 0) {
+            mostrarMensaje('error', 'El precio para 4 horas debe ser mayor a 0');
+            return;
+        }
+        if (precio6h && parseFloat(precio6h) <= 0) {
+            mostrarMensaje('error', 'El precio para 6 horas debe ser mayor a 0');
+            return;
+        }
+        if (precio12h && parseFloat(precio12h) <= 0) {
+            mostrarMensaje('error', 'El precio para 12 horas debe ser mayor a 0');
+            return;
+        }
+    }
+    
+    // Agregar todos los campos de precios (sin precio_base ni precio_hora_extra)
+    formData.append('precio_4_horas', document.getElementById('hab_p4h').value || '0');
+formData.append('precio_6_horas', document.getElementById('hab_p6h').value || '0');
+formData.append('precio_12_horas', document.getElementById('hab_p12h').value || '0');
+formData.append('precio_hora_extra', '0');
+    // Ya NO enviamos precio_base ni precio_hora_extra
+    
+    // IMPORTANTE: Enviar precio_base como 0 para que no falle la BD
+    // (Si tu BD lo requiere como NOT NULL, envía 0)
+    formData.append('precio_base', '1');
+    formData.append('precio_hora_extra', '0');
+    
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    
+    try {
+        const response = await fetch('/admin/sucursales_ajax', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarMensaje('success', data.message);
+            
+            // Refrescar la lista de habitaciones
+            if (sucursalId) {
+                await fetchHabitaciones(sucursalId);
+            } else if (accion === 'eliminar' && data.sucursal_id) {
+                // Si eliminamos y el backend nos devuelve la sucursal
+                await fetchHabitaciones(data.sucursal_id);
+            }
+            
+            resetHabForm();
+        } else {
+            mostrarMensaje('error', data.error || 'Error al procesar la solicitud');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('error', 'Error de conexión con el servidor');
+    } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = originalText;
+    }
+}
+
+        async function confirmDeleteHabitacion() {
+    const id = document.getElementById('hab_id').value;
+    const sucursalId = document.getElementById('hab_suc_id').value;
+    const numero = document.getElementById('hab_nombre').value || document.getElementById('hab_title').innerText.replace('Editando ', '');
+    
+    if (!id) {
+        mostrarMensaje('error', 'No hay habitación seleccionada para eliminar');
+        return;
+    }
+    
+    const mensaje = `¿Estás seguro de desactivar "${numero}"?\n\nEsta acción no se puede deshacer.`;
+    
+    if (!confirm(mensaje)) return;
+    
+    const formData = new FormData();
+    formData.append('tipo_formulario', 'habitacion');
+    formData.append('id_habitacion', id);
+    formData.append('accion', 'eliminar');
+    
+    // Agregar todos los campos de precios (sin precio_base ni precio_hora_extra)
+    formData.append('precio_base', '0'); // Enviamos 0 para que no falle la BD
+    formData.append('precio_4_horas', '0');
+    formData.append('precio_6_horas', '0');
+    formData.append('precio_12_horas', '0');
+    formData.append('precio_hora_extra', '0');
+    
+    // Si tenemos sucursal_id en el formulario, también lo enviamos (opcional para eliminar)
+    if (sucursalId) {
+        formData.append('sucursal_id', sucursalId);
+    }
+    
+    const btnDel = document.getElementById('btn-del-hab');
+    const originalHtml = btnDel.innerHTML;
+    
+    btnDel.disabled = true;
+    btnDel.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    try {
+        const response = await fetch('/admin/sucursales_ajax', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarMensaje('success', data.message);
+            
+            // Refrescar la lista de habitaciones
+            if (sucursalId) {
+                await fetchHabitaciones(sucursalId);
+            } else if (data.sucursal_id) {
+                // Si el backend nos devuelve la sucursal, usarla
+                document.getElementById('hab_suc_id').value = data.sucursal_id;
+                await fetchHabitaciones(data.sucursal_id);
+            }
+            
+            resetHabForm();
+        } else {
+            mostrarMensaje('error', data.error || 'Error al eliminar');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('error', 'Error de conexión');
+    } finally {
+        btnDel.disabled = false;
+        btnDel.innerHTML = originalHtml;
+    }
+}
+        // ========== FUNCIONES PARA USUARIOS (SIN RECARGAR) ==========
+        async function desactivarUsuario(userId, username, rol) {
+            if (rol === 'ADMIN_GENERAL') {
+                alert('No puedes desactivar al administrador general del sistema');
+                return;
+            }
+            
+            const mensaje = `¿Estás seguro de desactivar al usuario "${username}"?\n\n` +
+                           `• El usuario ya no podrá acceder al sistema\n` +
+                           `• Sus datos históricos se mantendrán\n` +
+                           `• Esta acción no se puede deshacer automáticamente`;
+            
+            if (!confirm(mensaje)) return;
+            
+            const formData = new FormData();
+            formData.append('tipo_formulario', 'usuario');
+            formData.append('id_usuario', userId);
+            formData.append('accion', 'eliminar');
+            
+            try {
+                const response = await fetch('/admin/sucursales_ajax', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarMensaje('success', data.message);
+                    
+                    // Eliminar fila de la tabla
+                    const fila = document.getElementById(`usuario-${userId}`);
+                    if (fila) {
+                        fila.remove();
+                    }
+                    
+                    // Actualizar contador
+                    const contador = document.getElementById('contador-usuarios');
+                    contador.textContent = parseInt(contador.textContent) - 1;
+                    
+                    // Si no quedan usuarios, mostrar mensaje
+                    if (parseInt(contador.textContent) === 0) {
+                        const tabla = document.getElementById('tabla-usuarios');
+                        tabla.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400">
+                                    <i class="fas fa-users-slash text-3xl mb-2"></i>
+                                    <p class="text-lg">No hay usuarios activos</p>
+                                    <p class="text-sm mt-1">No hay administradores de sucursal o recepcionistas activos en el sistema.</p>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    mostrarMensaje('error', data.error || 'Error al desactivar usuario');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('error', 'Error de conexión con el servidor');
+            }
+        }
+
+        // ========== FUNCIONES COMUNES ==========
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            
+            const isSuc = id === 'tab-sucursales';
+            const isHab = id === 'tab-habitaciones';
+            const isUsu = id === 'tab-usuarios';
+            
+            document.getElementById('btn-sucursales').className = isSuc 
+                ? "px-8 py-2.5 rounded-lg font-bold text-sm bg-white shadow-sm text-indigo-600" 
+                : "px-8 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-700 transition-all";
+            
+            document.getElementById('btn-habitaciones').className = isHab 
+                ? "px-8 py-2.5 rounded-lg font-bold text-sm bg-white shadow-sm text-emerald-600" 
+                : "px-8 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-700 transition-all";
+            
+            document.getElementById('btn-usuarios').className = isUsu 
+                ? "px-8 py-2.5 rounded-lg font-bold text-sm bg-white shadow-sm text-purple-600" 
+                : "px-8 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-slate-700 transition-all";
+        }
+
+        async function fetchHabitaciones(sid) {
+            if(!sid) {
+                const list = document.getElementById('hab-list');
+                list.innerHTML = '<p class="col-span-full text-center py-10 text-slate-400">Selecciona una sucursal para ver las habitaciones</p>';
+                return;
+            }
+            
+            const res = await fetch(`/api/habitaciones/${sid}`);
+            const data = await res.json();
+            const list = document.getElementById('hab-list');
+            
+            if (data.length === 0) {
+                list.innerHTML = '<p class="col-span-full text-center py-10 text-slate-400">No hay habitaciones activas en esta sucursal</p>';
+                return;
+            }
+            
+            list.innerHTML = data.map(h => `
+    <div class="p-4 border rounded-xl bg-slate-50 group hover:border-emerald-300 transition shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+            <div>
+                <span class="text-2xl font-black">${h.numero}</span>
+                <div class="text-xs font-medium text-emerald-600 mt-1">${h.nombre_personalizado || 'Sin nombre'}</div>
+            </div>
+            <button onclick='editHab(${JSON.stringify(h)})' class="text-slate-300 group-hover:text-emerald-600 transition-colors p-2">
+                <i class="fas fa-edit"></i>
+            </button>
+        </div>
+        <div class="flex items-center gap-2 mb-2">
+            <span class="px-2 py-1 rounded text-[9px] font-bold uppercase tracking-tighter 
+                ${h.tipo === 'JACUZZI' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 
+                  'bg-blue-100 text-blue-700 border border-blue-200'}">
+                ${h.tipo === 'JACUZZI' ? 'Jacuzzi' : 'Sencilla'}
+            </span>
+        </div>
+        
+        <!-- MOSTRAR SOLO PRECIOS POR PAQUETES (SIN PRECIO BASE) -->
+        <div class="space-y-1.5 mt-3 pt-3 border-t">
+            ${h.precio_4_horas > 0 ? `
+            <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-500">4 horas:</span>
+                <span class="font-bold text-blue-600">$${parseFloat(h.precio_4_horas).toFixed(2)}</span>
+            </div>
+            ` : ''}
+            ${h.precio_6_horas > 0 ? `
+            <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-500">6 horas:</span>
+                <span class="font-bold text-blue-600">$${parseFloat(h.precio_6_horas).toFixed(2)}</span>
+            </div>
+            ` : ''}
+            ${h.precio_12_horas > 0 ? `
+            <div class="flex justify-between items-center">
+                <span class="text-xs text-slate-500">12 horas:</span>
+                <span class="font-bold text-blue-600">$${parseFloat(h.precio_12_horas).toFixed(2)}</span>
+            </div>
+            ` : ''}
+        </div>
+    </div>
+`).join('') || '<p class="col-span-full text-center py-10 text-slate-400">Sin habitaciones activas registradas.</p>';
+        }
+
+        async function filtrarUsuarios(sucursalId) {
+            const res = await fetch(`/api/usuarios_filtro/${sucursalId}`);
+            const usuarios = await res.json();
+            
+            const tabla = document.getElementById('tabla-usuarios');
+            const contador = document.getElementById('contador-usuarios');
+            
+            if (usuarios.length === 0) {
+                tabla.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-slate-400">
+                            <i class="fas fa-users-slash text-3xl mb-2"></i>
+                            <p class="text-lg">No hay usuarios activos</p>
+                            <p class="text-sm mt-1">No se encontraron usuarios activos ${sucursalId == 0 ? 'en ninguna sucursal' : 'para esta sucursal'}.</p>
+                        </td>
+                    </tr>
+                `;
+                contador.textContent = '0';
+                return;
+            }
+            
+            tabla.innerHTML = usuarios.map(u => `
+                <tr class="hover:bg-slate-50 transition" id="usuario-${u.id}">
+                    <td class="p-4">
+                        <div class="font-bold text-slate-800">${u.username}</div>
+                        <div class="text-xs text-slate-500">${u.email}</div>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold 
+                            ${u.rol === 'ADMIN_MOTEL' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                              'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+                            ${u.rol === 'ADMIN_MOTEL' ? '<i class="fas fa-building mr-1"></i>Admin Sucursal' :
+                              '<i class="fas fa-user-check mr-1"></i>Recepcionista'}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-slate-700 text-sm">${u.sucursal_nombre || 'Sin asignar'}</div>
+                        ${u.turno ? `<div class="text-xs text-slate-500"><i class="fas fa-clock mr-1"></i>${u.turno}</div>` : ''}
+                    </td>
+                    <td class="p-4 text-slate-600 text-sm">
+                        ${u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES') : 'N/A'}
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="desactivarUsuario('${u.id}', '${u.username}', '${u.rol}')" 
+                                class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-100 transition-all border border-red-200 text-sm flex items-center gap-2 mx-auto">
+                            <i class="fas fa-user-slash"></i>
+                            Desactivar
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            contador.textContent = usuarios.length.toString();
+        }
+
+        // ========== FUNCIONES PARA SUCURSALES (CON RECARGA) ==========
+        function confirmDeleteSucursal() {
+            const id = document.getElementById('suc_id').value;
+            const nombre = document.getElementById('suc_nombre').value;
+            
+            const mensaje = `¿Estás seguro de desactivar la sucursal "${nombre}"?\n\n` +
+                           `No se mostrará en el sistema pero los datos históricos permanecerán.`;
+            
+            if (confirm(mensaje)) {
+                document.getElementById('suc_accion').value = 'eliminar';
+                document.getElementById('form-sucursal').submit();
+            }
+        }
+
+        function editSucursal(id, n, d) {
+            document.getElementById('suc_id').value = id;
+            document.getElementById('suc_nombre').value = n;
+            document.getElementById('suc_dir').value = d;
+            document.getElementById('suc_accion').value = 'guardar';
+            document.getElementById('btn-del-suc').classList.remove('hidden');
+            document.getElementById('suc-title').innerHTML = `<i class="fas fa-edit text-orange-500 mr-2"></i>Editando Sucursal: ${n}`;
+        }
+
+        function editHab(h) {
+    document.getElementById('hab_id').value = h.id;
+    document.getElementById('hab_suc_id').value = h.sucursal_id;
+    document.getElementById('hab_nombre').value = h.nombre_personalizado || '';
+    document.getElementById('hab_tipo').value = h.tipo;
+    
+    // NO cargamos precio_base
+    // document.getElementById('hab_pbase').value = h.precio_base;
+    
+    // Cargar los precios por paquetes
+    document.getElementById('hab_p4h').value = h.precio_4_horas || '';
+    document.getElementById('hab_p6h').value = h.precio_6_horas || '';
+    document.getElementById('hab_p12h').value = h.precio_12_horas || '';
+    
+    document.getElementById('hab_accion').value = 'guardar';
+    document.getElementById('btn-del-hab').classList.remove('hidden');
+    document.getElementById('hab-title').innerHTML = `<i class="fas fa-edit text-orange-500 mr-2"></i>Editando ${h.numero}`;
+    
+    // También cargar las habitaciones de esta sucursal automáticamente
+    fetchHabitaciones(h.sucursal_id);
+}
+
+        function resetHabForm() { 
+    document.getElementById('form-habitacion').reset(); 
+    document.getElementById('hab_id').value = ''; 
+    document.getElementById('hab_accion').value = 'guardar';
+    document.getElementById('btn-del-hab').classList.add('hidden');
+    document.getElementById('hab-title').innerHTML = `<i class="fas fa-door-open text-emerald-600 mr-2"></i>Gestionar Habitación`; 
+    
+    // Resetear específicamente los campos de precios por paquetes
+    document.getElementById('hab_p4h').value = '';
+    document.getElementById('hab_p6h').value = '';
+    document.getElementById('hab_p12h').value = '';
+    // Ya no reseteamos precio_base ni precio_hora_extra
+}
+
+        function resetSucForm() { 
+            document.getElementById('form-sucursal').reset(); 
+            document.getElementById('suc_id').value = ''; 
+            document.getElementById('suc_accion').value = 'guardar';
+            document.getElementById('btn-del-suc').classList.add('hidden');
+            document.getElementById('suc-title').innerHTML = `<i class="fas fa-building text-indigo-600 mr-2"></i>Nueva Sucursal`; 
+        }
+
+        // Añadir animaciones CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slide-in {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slide-out {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+            .animate-slide-in {
+                animation: slide-in 0.3s ease-out;
+            }
+            .animate-slide-out {
+                animation: slide-out 0.3s ease-in forwards;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Cargar mensajes flash de Flask (si los hay)
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        mostrarMensaje('{{ "success" if category == "success" else "error" }}', '{{ message }}');
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

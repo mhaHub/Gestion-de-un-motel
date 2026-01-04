@@ -287,6 +287,39 @@
             color: #991b1b;
             border: 1px solid #fecaca;
         }
+
+        /* Animaciones adicionales para la tarjeta de limpieza */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+
+        /* Efecto de tarjeta premium */
+        .shadow-md {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .hover\:shadow-lg:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Gradientes para botones */
+        .bg-gradient-to-r {
+            background-size: 200% 200%;
+            transition: background-position 0.5s ease;
+        }
+
+        .bg-gradient-to-r:hover {
+            background-position: right center;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -358,7 +391,12 @@
             <div>
                 <p class="font-semibold text-gray-800">{{ current_user.username }}</p>
                 <p class="text-xs text-gray-500">
-                    Recepcionista - {{ current_user.turno }} | Sucursal {{ current_user.sucursal_id }}
+                    Recepcionista - {{ current_user.turno }} | 
+                    {% if current_user.sucursal_nombre %}
+                        {{ current_user.sucursal_nombre }}
+                    {% else %}
+                        Sucursal {{ current_user.sucursal_id }}
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -407,7 +445,12 @@
             <div class="flex-1">
                 <h1 class="text-3xl lg:text-4xl font-bold text-gray-800">Panel de Recepción</h1>
                 <p class="text-lg text-indigo-600 font-medium mt-1">
-                    <i class="fas fa-user-clock mr-2"></i>Recepcionista | {{ current_user.turno }} | Sucursal {{ current_user.sucursal_id }}
+                    <i class="fas fa-user-clock mr-2"></i>Recepcionista | {{ current_user.turno }} | 
+                    {% if current_user.sucursal_nombre %}
+                        {{ current_user.sucursal_nombre }}
+                    {% else %}
+                        Sucursal {{ current_user.sucursal_id }}
+                    {% endif %}
                 </p>
             </div>
 
@@ -440,61 +483,118 @@
         </div>
     </header>
 
-        <!-- Contenido del Dashboard -->
-        <div class="w-full max-w-6xl">
-            <!-- TARJETAS DE RESUMEN DEL DÍA (MEJORADAS) -->
-            <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <!-- Clientes del Día -->
-                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500 transform hover:scale-[1.02] transition duration-300">
-                    <div class="flex items-center mb-2">
-                        <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <p class="text-sm font-medium text-gray-500">Clientes Hoy</p>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-800">{{ resumen.clientes_dia }}</p>
+  <div class="w-full max-w-6xl">
+    <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-indigo-500 transform hover:scale-[1.02] transition duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-users"></i>
                 </div>
-                
-                <!-- Ingreso Inicial del Día -->
-                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
-                    <div class="flex items-center mb-2">
-                        <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-money-bill-wave"></i>
-                        </div>
-                        <p class="text-sm font-medium text-gray-500">Ingresos Hoy</p>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+                <p class="text-sm font-medium text-gray-500">Clientes Hoy</p>
+            </div>
+            <p class="text-3xl font-bold text-gray-800">{{ resumen.clientes_dia }}</p>
+        </div>
+        
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-money-bill-wave"></i>
                 </div>
-                
-                <!-- Habitaciones Ocupadas -->
-                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
-                    <div class="flex items-center mb-2">
-                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-bed"></i>
-                        </div>
-                        <p class="text-sm font-medium text-gray-500">Ocupadas</p>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-800">{{ resumen.ocupadas }}</p>
-                </div>
-
-                <!-- En Limpieza (con animación si hay) -->
-                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 {% if resumen.limpieza > 0 %}limpieza-activa{% endif %}">
-                    <div class="flex items-center mb-2">
-                        <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-broom"></i>
-                        </div>
-                        <p class="text-sm font-medium text-gray-500">En Limpieza</p>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-800">{{ resumen.limpieza }}</p>
+                <div>
+                    <p class="text-sm font-medium text-gray-500 leading-tight">Total Vendido</p>
+                    <p class="text-[10px] text-green-600 font-bold uppercase">Monto a entregar</p>
                 </div>
             </div>
+            <p class="text-3xl font-bold text-gray-800">${{ "%.2f"|format(resumen.ingreso_inicial_dia) }}</p>
+        </div>
 
+
+        
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mr-3">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <p class="text-sm font-medium text-gray-500">Ocupadas</p>
+            </div>
+            <p class="text-3xl font-bold text-gray-800">{{ resumen.ocupadas }}</p>
+        </div>
+
+        <!-- Tarjeta de Limpieza - DISEÑO PREMIUM -->
+        <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-orange-500 transform hover:scale-[1.02] transition duration-300 relative overflow-hidden {% if resumen.limpieza > 0 %}limpieza-activa{% endif %}">
+            
+            <!-- Efecto de brillo naranja cuando hay limpiezas -->
+            {% if resumen.limpieza > 0 %}
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-orange-600 animate-pulse"></div>
+            {% endif %}
+            
+            <!-- Badge de urgencia -->
+            {% if resumen.limpieza > 0 %}
+            <div class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-lg animate-bounce">
+                {{ resumen.limpieza }}
+            </div>
+            {% endif %}
+            
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                    <i class="fas fa-broom text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-500">En Limpieza</p>
+                    <p class="text-xs font-semibold mt-1 {% if resumen.limpieza > 0 %}text-orange-600{% else %}text-green-600{% endif %}">
+                        {% if resumen.limpieza > 0 %}
+                        <i class="fas fa-exclamation-circle mr-1"></i>Necesita atención
+                        {% else %}
+                        <i class="fas fa-check-circle mr-1"></i>Todo limpio
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-end justify-between mt-4">
+                <div>
+                    <p class="text-3xl font-bold text-gray-800">{{ resumen.limpieza }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Habitaciones pendientes</p>
+                </div>
+                
+                {% if resumen.limpieza > 0 %}
+                <a href="{{ url_for('limpieza') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200">
+                    <i class="fas fa-tasks mr-2"></i>
+                    Gestionar
+                </a>
+                {% else %}
+                <div class="text-right">
+                    <p class="text-xs text-green-600 font-semibold">
+                        <i class="fas fa-check mr-1"></i>Al día
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Barra de progreso sutil -->
+            {% if resumen.limpieza > 0 %}
+            <div class="mt-4 pt-3 border-t border-orange-100">
+                <div class="flex items-center text-xs text-gray-500">
+                    <i class="fas fa-clock mr-1 text-orange-500"></i>
+                    <span>Click para gestionar limpiezas</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
             <!-- GRÁFICA PIE con datos REALES -->
             <div class="w-full mb-8">
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-chart-pie mr-3 text-indigo-600"></i>
-                        Distribución de Habitaciones - Sucursal {{ current_user.sucursal_id }}
+                        Distribución de Habitaciones - 
+                        {% if current_user.sucursal_nombre %}
+                            {{ current_user.sucursal_nombre }}
+                        {% else %}
+                            Sucursal {{ current_user.sucursal_id }}
+                        {% endif %}
                     </h2>
                     <div class="h-64">
                         <canvas id="actividadChart"></canvas>

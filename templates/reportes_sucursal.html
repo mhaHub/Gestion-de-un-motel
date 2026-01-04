@@ -2,45 +2,371 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reportes de Sucursal - Halftime Inn</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Sucursal - Halftime Inn</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
+        .table-header { text-transform: uppercase; font-size: 10px; font-weight: 900; color: #94a3b8; letter-spacing: 0.1em; }
+        .row-interactive:hover { cursor: pointer; background-color: #f1f5f9; transition: all 0.2s; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .tab-button { 
+            transition: all 0.3s; 
+            border-bottom: 3px solid transparent;
+        }
+        .tab-button.active { 
+            color: #4f46e5; 
+            border-bottom-color: #4f46e5;
+            font-weight: 900;
+        }
+    </style>
 </head>
-<body class="bg-slate-50 p-6">
-    <div class="max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-8">
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
             <div>
-                <h1 class="text-3xl font-bold text-slate-800">Gestión Operativa</h1>
-                <p class="text-slate-500">Administrador de Sucursal</p>
+                <a href="{{ url_for('dashboard_sucursal') }}" class="inline-flex items-center text-indigo-600 font-bold mb-4 hover:text-indigo-800 transition group">
+                    <i class="fas fa-arrow-left mr-2 transform group-hover:-translate-x-1 transition"></i> 
+                    Regresar al Dashboard
+                </a>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Reporte Operativo de Sucursal</h1>
+                <p class="text-slate-500 font-medium italic"> {{ finanzas.nombre_sucursal }}</p>
             </div>
-            <i class="fas fa-hotel text-slate-300 text-4xl"></i>
+            
+            <div class="flex flex-wrap gap-4 w-full lg:w-auto">
+                <div class="flex-1 lg:flex-none bg-slate-900 text-white px-8 py-5 rounded-2xl shadow-xl border-b-4 border-indigo-500 text-right">
+                    <p class="text-[10px] font-bold text-indigo-400 uppercase mb-1 tracking-widest">Total Vendido</p>
+                    <p class="text-3xl font-black">${{ "{:,.2f}".format(finanzas.monto_entregar) }}</p>
+                </div>
+            </div>
         </header>
 
-        <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 text-center">
-            <div class="inline-flex p-4 bg-indigo-50 rounded-full text-indigo-600 mb-4">
-                <i class="fas fa-chart-pie fa-2x"></i>
+        <!-- Pestañas de navegación -->
+        <div class="flex border-b border-slate-200 mb-6">
+            <button onclick="mostrarTab('tab-sucursal')" class="tab-button active px-4 py-3 text-sm font-bold">
+                <i class="fas fa-hotel mr-2"></i> Mi Sucursal
+            </button>
+            {% if current_user.rol == 'ADMIN_GENERAL' %}
+            <button onclick="mostrarTab('tab-comparativa')" class="tab-button px-4 py-3 text-sm font-bold">
+                <i class="fas fa-chart-bar mr-2"></i> Comparativa Sucursales
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="glass-card p-6 rounded-3xl mb-8 shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div>
+                    <label class="block table-header mb-2">Desde</label>
+                    <input type="date" id="fecha_inicio" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 shadow-inner" value="{{ fecha_inicio_default }}">
+                </div>
+                <div>
+                    <label class="block table-header mb-2">Hasta</label>
+                    <input type="date" id="fecha_fin" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 shadow-inner" value="{{ fecha_fin_default }}">
+                </div>
+                <button onclick="aplicarFiltros()" 
+                        class="w-full bg-indigo-600 text-white font-black py-3.5 rounded-xl hover:bg-indigo-700 shadow-lg transition active:scale-95">
+                    <i class="fas fa-filter mr-2"></i> FILTRAR RESULTADOS
+                </button>
             </div>
-            <h2 class="text-xl font-bold text-slate-700 mb-6">Métricas Acumuladas</h2>
-            
-            <div class="grid grid-cols-1 gap-6">
-                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                    <p class="text-slate-400 font-bold uppercase text-xs">Total de Rentas Históricas</p>
-                    <p class="text-6xl font-black text-slate-800">{{ stats.total if stats else 0 }}</p>
+        </div>
+
+        <!-- CONTENIDO DE PESTAÑA: MI SUCURSAL -->
+        <div id="tab-sucursal" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="glass-card p-6 rounded-3xl shadow-sm">
+                    <h3 class="font-black text-slate-800 uppercase text-[10px] mb-4 tracking-widest flex items-center">
+                        <i class="fas fa-chart-line mr-2 text-indigo-500"></i> Evolución de Ventas Diarias
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="canvasVentasDiarias"></canvas>
+                    </div>
+                </div>
+                
+                <div class="glass-card p-6 rounded-3xl shadow-sm bg-indigo-50/30 flex flex-col justify-center">
+                    <h3 class="font-black text-slate-800 uppercase text-[10px] mb-6 tracking-widest">Resumen Financiero</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-emerald-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Total Rentas</span>
+                            <span class="text-xl font-black text-emerald-600">{{ finanzas.total_rentas }}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-blue-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Ingresos Totales</span>
+                            <span class="text-xl font-black text-blue-600">${{ "{:,.2f}".format(finanzas.total_base) }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="mt-8 pt-6 border-t flex justify-center gap-4">
-                <a href="{{ url_for('registro_usuario') }}" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black transition">
-                    Registrar Personal
-                </a>
+            <div class="glass-card rounded-3xl overflow-hidden shadow-sm mb-8">
+                <div class="p-4 bg-slate-100 border-b font-black text-xs uppercase text-slate-600">Ventas Diarias</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50/50">
+                            <tr class="table-header border-b">
+                                <th class="px-6 py-3">Fecha</th>
+                                <th class="px-6 py-3">N° Rentas</th>
+                                <th class="px-6 py-3">Ingresos</th>
+                                <th class="px-6 py-3">Promedio por Renta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for d in datos_grafica %}
+                            <tr>
+                                <td class="px-6 py-3 font-bold text-slate-600">{{ d.fecha.strftime('%d/%m/%Y') }}</td>
+                                <td class="px-6 py-3 text-center font-medium">{{ d.numero_rentas or 0 }}</td>
+                                <td class="px-6 py-3 text-emerald-600 font-bold">${{ "{:,.2f}".format(d.ingresos_dia) }}</td>
+                                <td class="px-6 py-3 text-blue-600 font-bold">
+                                    {% if d.numero_rentas and d.numero_rentas > 0 %}
+                                    ${{ "{:,.2f}".format(d.ingresos_dia / d.numero_rentas) }}
+                                    {% else %}
+                                    $0.00
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-3xl overflow-hidden shadow-sm mb-8">
+                <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                    <h3 class="font-black uppercase text-xs tracking-widest">Detalle de Rentas del Periodo</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="table-header border-b bg-slate-50 text-left">
+                                <th class="px-6 py-4">ID / Recepcionista</th>
+                                <th class="px-6 py-4">Habitación / Cliente</th>
+                                <th class="px-6 py-4">Horas</th>
+                                <th class="px-6 py-4 text-right">Total Renta</th>
+                                <th class="px-6 py-4">Fecha/Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for renta in detalle_rentas %}
+                            <tr class="row-interactive">
+                                <td class="px-6 py-4">
+                                    <p class="font-black text-indigo-600">#{{ renta.id }}</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">{{ renta.nombre_usuario }}</p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-slate-100 rounded text-[10px] font-black text-slate-500 uppercase">{{ renta.tipo_habitacion }}</span>
+                                    <p class="text-xs font-medium text-slate-700 mt-1">{{ renta.cliente_nombre or 'Sin nombre' }}</p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="text-[10px] font-black text-indigo-500">{{ renta.horas_pactadas }} HORAS</p>
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-emerald-600">${{ "{:,.2f}".format(renta.pago_inicial) }}</td>
+                                <td class="px-6 py-4 text-xs text-slate-500">
+                                    {{ renta.hora_entrada.strftime('%d/%m %H:%M') if renta.hora_entrada else 'N/A' }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="glass-card rounded-3xl overflow-hidden shadow-sm">
+                    <div class="p-4 bg-slate-50 border-b font-black text-xs uppercase text-slate-800">Ranking de Habitaciones</div>
+                    <table class="w-full divide-y">
+                        {% for h in habitaciones %}
+                        <tr>
+                            <td class="p-4 font-bold text-slate-700">{{ h.tipo }}</td>
+                            <td class="p-4 text-right font-black text-indigo-600">{{ h.veces_rentada }} Rentas</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                <div class="glass-card rounded-3xl overflow-hidden shadow-sm">
+                    <div class="p-4 bg-slate-50 border-b font-black text-xs uppercase text-slate-800">Análisis por Tipo</div>
+                    <table class="w-full divide-y">
+                        {% for h in habitaciones %}
+                        <tr>
+                            <td class="p-4 font-bold text-slate-700">{{ h.tipo }}</td>
+                            <td class="p-4 text-right font-black text-emerald-600">${{ "{:,.2f}".format(h.generado or 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="mt-6">
-            <a href="{{ url_for('dashboard') }}" class="text-indigo-600 font-bold hover:underline">
-                <i class="fas fa-arrow-left"></i> Volver al Dashboard
-            </a>
+        <!-- CONTENIDO DE PESTAÑA: COMPARATIVA SUCURSALES (solo para ADMIN_GENERAL) -->
+        {% if current_user.rol == 'ADMIN_GENERAL' %}
+        <div id="tab-comparativa" class="tab-content hidden">
+            <div class="glass-card p-6 rounded-3xl shadow-sm mb-8">
+                <h3 class="font-black text-slate-800 uppercase text-[10px] mb-4 tracking-widest flex items-center">
+                    <i class="fas fa-balance-scale mr-2 text-purple-500"></i> Comparativa de Sucursales
+                </h3>
+                <div class="chart-container mb-6">
+                    <canvas id="canvasComparativaSucursales"></canvas>
+                </div>
+                
+                <div class="glass-card rounded-3xl overflow-hidden shadow-sm">
+                    <div class="p-4 bg-slate-100 border-b font-black text-xs uppercase text-slate-600">Tabla Comparativa</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50/50">
+                                <tr class="table-header border-b">
+                                    <th class="px-6 py-3">Sucursal</th>
+                                    <th class="px-6 py-3 text-center">Total Rentas</th>
+                                    <th class="px-6 py-3 text-right">Ingresos Totales</th>
+                                    <th class="px-6 py-3 text-right">Promedio/Renta</th>
+                                    <th class="px-6 py-3 text-center">Ocupación</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for s in sucursales_comparativa %}
+                                <tr>
+                                    <td class="px-6 py-3 font-bold text-slate-700">
+                                        <i class="fas fa-hotel text-blue-500 mr-2"></i>{{ s.nombre }}
+                                    </td>
+                                    <td class="px-6 py-3 text-center font-medium">{{ s.total_rentas }}</td>
+                                    <td class="px-6 py-3 text-right font-bold text-emerald-600">${{ "{:,.2f}".format(s.ingresos_totales) }}</td>
+                                    <td class="px-6 py-3 text-right font-bold text-blue-600">
+                                        {% if s.total_rentas > 0 %}
+                                        ${{ "{:,.2f}".format(s.ingresos_totales / s.total_rentas) }}
+                                        {% else %}
+                                        $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-3 text-center">
+                                        {% set porcentaje_ocupacion = (s.habitaciones_ocupadas / s.total_habitaciones * 100) if s.total_habitaciones > 0 else 0 %}
+                                        <div class="inline-flex items-center">
+                                            <div class="w-24 bg-slate-200 rounded-full h-2 mr-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: {{ porcentaje_ocupacion }}%"></div>
+                                            </div>
+                                            <span class="text-xs font-bold">{{ "%.1f"|format(porcentaje_ocupacion) }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="bg-slate-50 font-bold">
+                                <tr>
+                                    <td class="px-6 py-3 text-slate-700">TOTALES</td>
+                                    <td class="px-6 py-3 text-center">{{ total_comparativa.total_rentas }}</td>
+                                    <td class="px-6 py-3 text-right text-emerald-700">${{ "{:,.2f}".format(total_comparativa.ingresos_totales) }}</td>
+                                    <td class="px-6 py-3 text-right text-blue-700">
+                                        {% if total_comparativa.total_rentas > 0 %}
+                                        ${{ "{:,.2f}".format(total_comparativa.ingresos_totales / total_comparativa.total_rentas) }}
+                                        {% else %}
+                                        $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-3 text-center">—</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
+        {% endif %}
+
+        <footer class="mt-12 py-8 border-t border-slate-200 opacity-60 text-center">
+            <p class="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">
+                Protocolo Halftime Inn: Validación de sesión obligatoria tras reinicio de servidor.
+            </p>
+        </footer>
     </div>
+
+    <script>
+        // Sistema de pestañas
+        function mostrarTab(tabId) {
+            // Ocultar todos los tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Mostrar el tab seleccionado
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            // Actualizar botones activos
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function aplicarFiltros() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const fechaFin = document.getElementById('fecha_fin').value;
+            
+            window.location.href = `?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gráfico de ventas diarias
+            const ctxVentas = document.getElementById('canvasVentasDiarias')?.getContext('2d');
+            if (ctxVentas) {
+                new Chart(ctxVentas, {
+                    type: 'line',
+                    data: {
+                        labels: [{% for d in datos_grafica %}'{{ d.fecha.strftime("%d/%m") }}',{% endfor %}],
+                        datasets: [
+                            {
+                                label: 'Ingresos Diarios',
+                                data: [{% for d in datos_grafica %}{{ d.ingresos_dia }},{% endfor %}],
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                borderColor: '#3b82f6',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: { 
+                        maintainAspectRatio: false, 
+                        scales: { 
+                            y: { beginAtZero: true } 
+                        },
+                        plugins: { 
+                            legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 10 } } } 
+                        }
+                    }
+                });
+            }
+
+            // Gráfico de comparativa de sucursales (solo si existe)
+            const ctxComparativa = document.getElementById('canvasComparativaSucursales')?.getContext('2d');
+            if (ctxComparativa) {
+                new Chart(ctxComparativa, {
+                    type: 'bar',
+                    data: {
+                        labels: [{% for s in sucursales_comparativa %}'{{ s.nombre }}',{% endfor %}],
+                        datasets: [
+                            {
+                                label: 'Ingresos Totales',
+                                data: [{% for s in sucursales_comparativa %}{{ s.ingresos_totales }},{% endfor %}],
+                                backgroundColor: [
+                                    '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'
+                                ],
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: { 
+                        maintainAspectRatio: false, 
+                        scales: { 
+                            y: { beginAtZero: true } 
+                        },
+                        plugins: { 
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

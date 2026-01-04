@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-in Admin - Motel Halftime Inn</title>
+    <title>Check-in Recepcionista - Motel Halftime Inn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -11,17 +11,33 @@
         .hora-option { transition: all 0.2s ease; }
         .hora-option:hover { transform: scale(1.05); }
         .hora-option.selected { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+        .hab-disponible { border-left: 4px solid #10b981; }
+        .hab-ocupada { border-left: 4px solid #ef4444; }
+        .hab-limpieza { border-left: 4px solid #f59e0b; }
     </style>
 </head>
 <body>
     <div class="min-h-screen flex flex-col items-center p-4 sm:p-6 bg-gray-100">
-        <!-- Header -->
-        <header class="w-full max-w-4xl text-center mb-8">
+        <!-- Header con botón de volver -->
+        <header class="w-full max-w-4xl text-center mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <a href="{{ url_for('dashboard_recepcionista') }}" 
+                   class="flex items-center text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-indigo-100 hover:border-indigo-300">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Volver al Dashboard
+                </a>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Turno {{ current_user.turno }}</p>
+                </div>
+            </div>
+            
             <h1 class="text-4xl font-bold text-gray-800">Halftime Inn</h1>
-            <p class="text-xl text-indigo-600 mt-1">Sistema Administrativo - Check-in</p>
-            <p class="text-sm text-gray-500 mt-2">Panel de Administrador</p>
+            <p class="text-xl text-indigo-600 mt-1">Sistema de Recepción - Check-in</p>
         </header>
 
+        <!-- Mensajes flash -->
         <div class="w-full max-w-xl mb-4">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -35,99 +51,94 @@
         </div>
 
         <!-- Main Form Card -->
-        <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-2xl border-t-4 border-indigo-600">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">Registro de Entrada - Administrador</h2>
+        <div class="w-full max-w-xl bg-white p-8 rounded-xl shadow-2xl border-t-4 border-indigo-600">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">Registro de Entrada - Recepcionista</h2>
 
-            <form method="POST" action="{{ url_for('checkin_admin') }}">
+            <form method="POST" action="{{ url_for('checkin_recepcionista') }}">
                 
-                <!-- Recepcionista Seleccionable -->
-                <div class="mb-4">
-                    <label for="recepcionista_id" class="block text-gray-600 font-medium mb-2">Recepcionista <span class="text-red-500">*</span></label>
-                    <select id="recepcionista_id" name="recepcionista_id" required 
-                            class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
-                        <option value="" disabled selected>Seleccione un recepcionista</option>
-                        {% for r in recepcionistas %}
-                            <option value="{{ r.id }}">
-                                {{ r.username }} - Turno {{ r.turno }}
-                                {% if current_user.rol == 'ADMIN_GENERAL' %}
-                                    (Sucursal: {{ r.sucursal_id }})
-                                {% endif %}
-                            </option>
-                        {% endfor %}
-                    </select>
+                <!-- Información automática del recepcionista -->
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-semibold text-blue-700 mb-2">Información Automática</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Recepcionista</label>
+                            <input type="text" value="{{ current_user.username }}" readonly 
+                                   class="w-full p-2 border border-gray-300 bg-gray-100 rounded text-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Turno</label>
+                            <input type="text" value="{{ current_user.turno }}" readonly 
+                                   class="w-full p-2 border border-gray-300 bg-gray-100 rounded text-gray-600">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Turno -->
+                <!-- Especificaciones -->
                 <div class="mb-4">
-                    <label for="turno_renta" class="block text-gray-600 font-medium mb-2">Turno de Renta <span class="text-red-500">*</span></label>
-                    <select id="turno_renta" name="turno_renta" required 
-                            class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
-                        <option value="" disabled selected>Seleccione turno</option>
-                        <option value="MATUTINO">Matutino</option>
-                        <option value="VESPERTINO">Vespertino</option>
-                        <option value="NOCTURNO">Nocturno</option>
-                    </select>
-                </div>
-
-                <!-- Nombre del Cliente -->
-                <div class="mb-4">
-                    <label for="nombre_cliente" class="block text-gray-600 font-medium mb-2">Comentarios / Nombre Cliente <span class="text-red-500">*</span></label>
-                    <input type="text" id="nombre_cliente" name="nombre_cliente" required 
+                    <label for="especificaciones" class="block text-gray-600 font-medium mb-2">Nombre del Cliente <span class="text-red-500">*</span></label>
+                    <input type="text" id="especificaciones" name="especificaciones" required 
                            class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" 
-                           placeholder="Ej: Cliente 001, Vehículo rojo, etc.">
+                           placeholder="Ejemplo: Juan Perez">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <!-- Número de Habitación -->
                     <div>
-                        <label for="habitacion_id" class="block text-gray-600 font-medium mb-2">Habitación <span class="text-red-500">*</span></label>
+                        <label for="habitacion_id" class="block text-gray-600 font-medium mb-2">Habitación Disponible <span class="text-red-500">*</span></label>
                         <select id="habitacion_id" name="habitacion_id" required 
                                 class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150 bg-white">
-                            <option value="" disabled selected>Seleccione</option>
+                            <option value="" disabled selected>Seleccione una habitación</option>
                             {% for h in habitaciones %}
-                                <option value="{{ h.id }}">
-                                    {{ h.numero }} ({{ h.tipo.value if h.tipo.value else h.tipo }}) - ${{ "%.2f"|format(h.precio_base) }}/hr
-                                    {% if 'sucursal_nombre' in h %}
-                                        - {{ h.sucursal_nombre }}
-                                    {% endif %}
+                                <option value="{{ h.id }}" 
+                                        data-precio4h="{{ h.precio_4_horas }}"
+                                        data-precio6h="{{ h.precio_6_horas }}"
+                                        data-precio12h="{{ h.precio_12_horas }}"
+                                        data-tipo="{{ h.tipo }}"
+                                        data-numero="{{ h.numero }}">
+                                    Hab. {{ h.numero }} - {{ h.tipo }}
+                                    {% if h.precio_4_horas > 0 %}(4h: ${{ "%.0f"|format(h.precio_4_horas) }}){% endif %}
                                 </option>
                             {% endfor %}
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Solo se muestran las DISPONIBLES.</p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <span class="font-semibold">{{ habitaciones|length }} habitaciones</span> disponibles en tu sucursal
+                        </p>
                     </div>
 
-                    <!-- Horas Predefinidas -->
+                    <!-- Paquete de Horas -->
                     <div>
-                        <label class="block text-gray-600 font-medium mb-2">Horas Reservadas <span class="text-red-500">*</span></label>
+                        <label class="block text-gray-600 font-medium mb-2">Paquete de Horas <span class="text-red-500">*</span></label>
                         <div class="grid grid-cols-3 gap-2" id="horas-container">
                             <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="4">
                                 <div class="font-semibold">4 horas</div>
-                                <div class="text-xs text-gray-500">$<span id="precio-4">0</span></div>
+                                <div class="text-xs text-gray-500" id="precio-4-text">Seleccione hab.</div>
                             </button>
                             <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="6">
                                 <div class="font-semibold">6 horas</div>
-                                <div class="text-xs text-gray-500">$<span id="precio-6">0</span></div>
+                                <div class="text-xs text-gray-500" id="precio-6-text">Seleccione hab.</div>
                             </button>
                             <button type="button" class="hora-option p-3 border border-gray-300 rounded-lg text-center bg-white hover:bg-gray-50" data-hours="12">
                                 <div class="font-semibold">12 horas</div>
-                                <div class="text-xs text-gray-500">$<span id="precio-12">0</span></div>
+                                <div class="text-xs text-gray-500" id="precio-12-text">Seleccione hab.</div>
                             </button>
                         </div>
                         
-                        <div class="mt-3">
-                            <label class="block text-sm text-gray-600 mb-1">Más horas (personalizado)</label>
-                            <div class="flex gap-2">
-                                <input type="number" id="horas_personalizadas" name="horas_personalizadas" min="1" max="24" 
-                                       class="flex-1 p-2 border border-gray-300 rounded-lg focus:border-indigo-500" 
-                                       placeholder="Ej: 8">
-                                <button type="button" id="btn-aplicar-personalizado" 
-                                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
-                                    Aplicar
-                                </button>
+                        <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Resumen:</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="p-2 bg-white rounded border">
+                                    <div class="text-xs text-gray-500">Habitación</div>
+                                    <div class="font-semibold" id="hab-seleccionada">-</div>
+                                </div>
+                                <div class="p-2 bg-white rounded border">
+                                    <div class="text-xs text-gray-500">Paquete</div>
+                                    <div class="font-semibold" id="paquete-seleccionado">-</div>
+                                </div>
                             </div>
                         </div>
                         
-                        <input type="hidden" id="horas_reservadas" name="horas_reservadas" required value="">
+                        <input type="hidden" id="horas_pactadas" name="horas_pactadas" required value="">
+                        <input type="hidden" id="pago_inicial" name="pago_inicial" value="0">
                     </div>
                 </div>
 
@@ -141,12 +152,12 @@
                             <label class="inline-flex items-center">
                                 <input type="radio" name="modo_ingreso" value="VEHICULO" 
                                        class="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" checked>
-                                <span class="ml-2 text-gray-700">Vehículo</span>
+                                <span class="ml-2 text-gray-700">🚗 Vehículo</span>
                             </label>
                             <label class="inline-flex items-center">
                                 <input type="radio" name="modo_ingreso" value="A_PIE" 
                                        class="form-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                                <span class="ml-2 text-gray-700">A Pie</span>
+                                <span class="ml-2 text-gray-700">👣 A Pie</span>
                             </label>
                         </div>
                     </div>
@@ -161,6 +172,49 @@
                     </div>
                 </div>
 
+                <!-- Información de Pago -->
+                <div class="mb-6 p-4 border rounded-lg bg-green-50/50">
+                    <h3 class="font-semibold text-green-700 mb-3">Información de Pago</h3>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-600 font-medium mb-2">Total a Pagar</label>
+                            <div class="p-3 bg-white border rounded-lg text-center">
+                                <div class="text-2xl font-bold text-gray-800" id="total-a-pagar">$0.00</div>
+                                <div class="text-sm text-gray-500">MXN</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 font-medium mb-2">Moneda de Pago</label>
+                            <div class="flex gap-2">
+                                <button type="button" id="btn-mxn" class="flex-1 p-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition currency-btn selected" data-currency="MXN">
+                                    MXN
+                                </button>
+                                <button type="button" id="btn-usd" class="flex-1 p-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition currency-btn" data-currency="USD">
+                                    USD
+                                </button>
+                            </div>
+                            <input type="hidden" id="moneda_pago" name="moneda_pago" value="MXN">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="monto_recibido" class="block text-gray-600 font-medium mb-2">Monto Recibido <span class="text-red-500">*</span></label>
+                        <input type="number" id="monto_recibido" name="monto_recibido" step="0.01" min="0" required 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition duration-150" 
+                               placeholder="0.00">
+                        <p class="text-xs text-gray-500 mt-1" id="moneda-indicador">En Pesos Mexicanos (MXN)</p>
+                    </div>
+
+                    <div class="p-3 bg-white border rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-gray-700">Cambio a Entregar:</span>
+                            <span class="text-2xl font-bold text-green-600" id="cambio-a-entregar">$0.00</span>
+                        </div>
+                        <div class="text-sm text-gray-500 text-right mt-1">En Pesos Mexicanos (MXN)</div>
+                    </div>
+                </div>
+
                 <!-- Botón de Check-in -->
                 <button type="submit" id="btn-checkin" 
                         class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-md transform hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -168,138 +222,267 @@
                     Confirmar Check-in
                 </button>
             </form>
-        </div>
-
-        <!-- Enlace de navegación -->
-        <div class="mt-6">
-            <a href="{{ url_for('dashboard_admin') }}" class="text-indigo-600 hover:text-indigo-800 font-medium">← Volver al Dashboard</a>
+            
+            <!-- Botón adicional de volver al final del formulario -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <a href="{{ url_for('dashboard_recepcionista') }}" 
+                   class="flex items-center justify-center text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Volver al Dashboard
+                </a>
+            </div>
         </div>
     </div>
 
     <script>
-        // Mismo JavaScript que tu checkin.html original
-        let precioHoraActual = 0;
+        // Variables globales
+        let preciosHabitacion = {
+            precio4h: 0,
+            precio6h: 0,
+            precio12h: 0
+        };
         let horasSeleccionadas = 0;
-
-        function inicializarEventos() {
+        let totalAPagar = 0;
+        let monedaSeleccionada = 'MXN';
+        let tipoCambioUSD = {{ tipo_cambio }};
+        let numeroHabitacion = '';
+        let tipoHabitacion = '';
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar evento para cambio de habitación
             document.getElementById('habitacion_id').addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 if (selectedOption.value) {
-                    const texto = selectedOption.text;
-                    const match = texto.match(/\$([0-9.]+)/);
-                    if (match) {
-                        precioHoraActual = parseFloat(match[1]);
-                        actualizarPrecios();
-                        verificarFormularioCompleto();
-                    }
-                }
-            });
-
-            document.querySelectorAll('.hora-option').forEach(button => {
-                button.addEventListener('click', function() {
+                    // Obtener precios específicos por paquetes
+                    preciosHabitacion.precio4h = parseFloat(selectedOption.getAttribute('data-precio4h')) || 0;
+                    preciosHabitacion.precio6h = parseFloat(selectedOption.getAttribute('data-precio6h')) || 0;
+                    preciosHabitacion.precio12h = parseFloat(selectedOption.getAttribute('data-precio12h')) || 0;
+                    
+                    // Obtener información de la habitación
+                    numeroHabitacion = selectedOption.getAttribute('data-numero') || '';
+                    tipoHabitacion = selectedOption.getAttribute('data-tipo') || '';
+                    
+                    // Actualizar precios en los botones
+                    actualizarPreciosBotones();
+                    
+                    // Actualizar resumen
+                    document.getElementById('hab-seleccionada').textContent = `Hab. ${numeroHabitacion} - ${tipoHabitacion}`;
+                    
+                    // Reiniciar selección de horas
+                    horasSeleccionadas = 0;
+                    document.getElementById('horas_pactadas').value = '';
+                    document.getElementById('paquete-seleccionado').textContent = '-';
+                    
+                    // Limpiar selección visual de horas
                     document.querySelectorAll('.hora-option').forEach(btn => {
                         btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
                         btn.classList.add('bg-white', 'text-gray-700');
                     });
                     
+                    // Calcular y actualizar
+                    calcularTotal();
+                    verificarFormularioCompleto();
+                }
+            });
+
+            // Configurar botones de horas
+            document.querySelectorAll('.hora-option').forEach(button => {
+                button.addEventListener('click', function() {
+                    const horas = parseInt(this.getAttribute('data-hours'));
+                    
+                    // Verificar que el precio para estas horas sea mayor a 0
+                    const precio = horas === 4 ? preciosHabitacion.precio4h :
+                                   horas === 6 ? preciosHabitacion.precio6h :
+                                   preciosHabitacion.precio12h;
+                    
+                    if (precio <= 0) {
+                        alert(`Esta habitación no tiene precio configurado para ${horas} horas`);
+                        return;
+                    }
+                    
+                    // Limpiar selección visual
+                    document.querySelectorAll('.hora-option').forEach(btn => {
+                        btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
+                        btn.classList.add('bg-white', 'text-gray-700');
+                    });
+                    
+                    // Seleccionar el botón clickeado
                     this.classList.add('selected', 'bg-indigo-600', 'text-white');
                     this.classList.remove('bg-white', 'text-gray-700');
                     
-                    horasSeleccionadas = this.getAttribute('data-hours');
-                    document.getElementById('horas_reservadas').value = horasSeleccionadas;
-                    document.getElementById('horas_personalizadas').value = '';
+                    // Establecer horas seleccionadas
+                    horasSeleccionadas = horas;
+                    document.getElementById('horas_pactadas').value = horasSeleccionadas;
                     
+                    // Actualizar resumen
+                    document.getElementById('paquete-seleccionado').textContent = `${horasSeleccionadas} horas`;
+                    
+                    // Calcular y actualizar
+                    calcularTotal();
                     verificarFormularioCompleto();
                 });
             });
 
-            document.getElementById('btn-aplicar-personalizado').addEventListener('click', function() {
-                const horasPersonalizadas = document.getElementById('horas_personalizadas').value;
-                if (horasPersonalizadas && horasPersonalizadas > 0) {
-                    document.querySelectorAll('.hora-option').forEach(btn => {
-                        btn.classList.remove('selected', 'bg-indigo-600', 'text-white');
-                        btn.classList.add('bg-white', 'text-gray-700');
+            // Configurar botones de moneda
+            document.querySelectorAll('.currency-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Limpiar selección visual
+                    document.querySelectorAll('.currency-btn').forEach(btn => {
+                        btn.classList.remove('selected', 'bg-green-600', 'text-white');
+                        btn.classList.add('bg-gray-200', 'text-gray-700');
                     });
                     
-                    horasSeleccionadas = horasPersonalizadas;
-                    document.getElementById('horas_reservadas').value = horasSeleccionadas;
+                    // Seleccionar el botón clickeado
+                    this.classList.add('selected', 'bg-green-600', 'text-white');
+                    this.classList.remove('bg-gray-200', 'text-gray-700');
                     
-                    verificarFormularioCompleto();
-                } else {
-                    alert('Ingrese un número válido de horas');
-                }
-            });
-
-            document.querySelectorAll('input[name="modo_ingreso"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const modoIngreso = document.querySelector('input[name="modo_ingreso"]:checked');
-                    const datosVehiculoSection = document.getElementById('datos-vehiculo-section');
-                    if (modoIngreso && modoIngreso.value === 'VEHICULO') {
-                        datosVehiculoSection.style.display = 'block';
+                    // Establecer moneda seleccionada
+                    monedaSeleccionada = this.getAttribute('data-currency');
+                    document.getElementById('moneda_pago').value = monedaSeleccionada;
+                    
+                    // Actualizar indicador de moneda
+                    const indicador = document.getElementById('moneda-indicador');
+                    if (monedaSeleccionada === 'MXN') {
+                        indicador.textContent = 'En Pesos Mexicanos (MXN)';
                     } else {
-                        datosVehiculoSection.style.display = 'none';
-                        document.getElementById('placas').value = '';
+                        indicador.textContent = 'En Dólares Americanos (USD)';
                     }
+                    
+                    // Recalcular total y cambio
+                    calcularTotal();
+                    calcularCambio();
                 });
             });
 
-            document.getElementById('nombre_cliente').addEventListener('input', verificarFormularioCompleto);
-            document.getElementById('recepcionista_id').addEventListener('change', verificarFormularioCompleto);
-            document.getElementById('turno_renta').addEventListener('change', verificarFormularioCompleto);
+            // Configurar evento para monto recibido
+            document.getElementById('monto_recibido').addEventListener('input', function() {
+                calcularCambio();
+                verificarFormularioCompleto();
+            });
+
+            // Configurar evento para especificaciones
+            document.getElementById('especificaciones').addEventListener('input', function() {
+                verificarFormularioCompleto();
+            });
+        });
+
+        function actualizarPreciosBotones() {
+            // Actualizar texto de precios en los botones
+            const precio4Text = preciosHabitacion.precio4h > 0 ? `$${preciosHabitacion.precio4h.toFixed(2)}` : 'No config.';
+            const precio6Text = preciosHabitacion.precio6h > 0 ? `$${preciosHabitacion.precio6h.toFixed(2)}` : 'No config.';
+            const precio12Text = preciosHabitacion.precio12h > 0 ? `$${preciosHabitacion.precio12h.toFixed(2)}` : 'No config.';
+            
+            document.getElementById('precio-4-text').textContent = precio4Text;
+            document.getElementById('precio-6-text').textContent = precio6Text;
+            document.getElementById('precio-12-text').textContent = precio12Text;
+            
+            // Habilitar/deshabilitar botones según disponibilidad
+            document.querySelectorAll('.hora-option').forEach(button => {
+                const horas = parseInt(button.getAttribute('data-hours'));
+                const precio = horas === 4 ? preciosHabitacion.precio4h :
+                               horas === 6 ? preciosHabitacion.precio6h :
+                               preciosHabitacion.precio12h;
+                
+                if (precio <= 0) {
+                    button.disabled = true;
+                    button.classList.add('opacity-50', 'cursor-not-allowed');
+                    button.classList.remove('hover:bg-gray-50');
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('opacity-50', 'cursor-not-allowed');
+                    button.classList.add('hover:bg-gray-50');
+                }
+            });
         }
 
-        function actualizarPrecios() {
-            if (precioHoraActual > 0) {
-                document.getElementById('precio-4').textContent = (precioHoraActual * 4).toFixed(2);
-                document.getElementById('precio-6').textContent = (precioHoraActual * 6).toFixed(2);
-                document.getElementById('precio-12').textContent = (precioHoraActual * 12).toFixed(2);
+        function calcularTotal() {
+            // Determinar el precio según las horas seleccionadas
+            let precio = 0;
+            
+            if (horasSeleccionadas === 4) {
+                precio = preciosHabitacion.precio4h;
+            } else if (horasSeleccionadas === 6) {
+                precio = preciosHabitacion.precio6h;
+            } else if (horasSeleccionadas === 12) {
+                precio = preciosHabitacion.precio12h;
+            }
+            
+            totalAPagar = precio;
+            
+            // Actualizar campo oculto para el backend
+            document.getElementById('pago_inicial').value = totalAPagar;
+            
+            // Mostrar total según moneda seleccionada
+            const totalElement = document.getElementById('total-a-pagar');
+            if (monedaSeleccionada === 'MXN') {
+                totalElement.textContent = '$' + totalAPagar.toFixed(2);
+            } else {
+                const totalUSD = totalAPagar / tipoCambioUSD;
+                totalElement.textContent = '$' + totalUSD.toFixed(2) + ' USD';
+            }
+            
+            // Actualizar cambio si hay monto recibido
+            calcularCambio();
+        }
+
+        function calcularCambio() {
+            const montoRecibido = parseFloat(document.getElementById('monto_recibido').value) || 0;
+            let cambio = 0;
+            
+            if (monedaSeleccionada === 'MXN') {
+                cambio = montoRecibido - totalAPagar;
+            } else {
+                // Convertir monto recibido en USD a MXN
+                const montoRecibidoMXN = montoRecibido * tipoCambioUSD;
+                cambio = montoRecibidoMXN - totalAPagar;
+            }
+            
+            // Mostrar cambio (siempre en MXN)
+            const cambioElement = document.getElementById('cambio-a-entregar');
+            if (cambio >= 0) {
+                cambioElement.textContent = '$' + cambio.toFixed(2);
+                cambioElement.classList.remove('text-red-600');
+                cambioElement.classList.add('text-green-600');
+            } else {
+                cambioElement.textContent = '-$' + Math.abs(cambio).toFixed(2);
+                cambioElement.classList.remove('text-green-600');
+                cambioElement.classList.add('text-red-600');
             }
         }
 
         function verificarFormularioCompleto() {
             const habitacionSeleccionada = document.getElementById('habitacion_id').value;
-            const horasSeleccionadas = document.getElementById('horas_reservadas').value;
-            const nombreCliente = document.getElementById('nombre_cliente').value.trim();
-            const recepcionista = document.getElementById('recepcionista_id').value;
-            const turno = document.getElementById('turno_renta').value;
+            const horasSeleccionadas = document.getElementById('horas_pactadas').value;
+            const especificaciones = document.getElementById('especificaciones').value.trim();
+            const montoRecibido = document.getElementById('monto_recibido').value;
             
+            // Verificar que el precio sea mayor a 0 (que exista paquete configurado)
+            const precioValido = totalAPagar > 0;
+            const montoValido = parseFloat(montoRecibido) > 0;
             const formularioCompleto = habitacionSeleccionada && 
                                      horasSeleccionadas && 
-                                     nombreCliente && 
-                                     recepcionista && 
-                                     turno;
+                                     especificaciones &&
+                                     precioValido &&
+                                     montoValido;
             
             const btnCheckin = document.getElementById('btn-checkin');
             btnCheckin.disabled = !formularioCompleto;
             
             if (formularioCompleto) {
-                btnCheckin.innerHTML = `Confirmar Check-in • $${calcularTotal().toFixed(2)}`;
+                let textoBoton = 'Confirmar Check-in • ';
+                if (monedaSeleccionada === 'MXN') {
+                    textoBoton += '$' + totalAPagar.toFixed(2) + ' MXN';
+                } else {
+                    textoBoton += '$' + (totalAPagar / tipoCambioUSD).toFixed(2) + ' USD';
+                }
+                btnCheckin.innerHTML = textoBoton;
             } else {
                 btnCheckin.innerHTML = 'Confirmar Check-in';
             }
         }
-
-        function calcularTotal() {
-            if (!precioHoraActual || !horasSeleccionadas) return 0;
-            const horas = parseInt(horasSeleccionadas) || 0;
-            return precioHoraActual * (horas / 4);
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            inicializarEventos();
-            actualizarPrecios();
-            verificarFormularioCompleto();
-            
-            const primeraOpcion = document.querySelector('.hora-option[data-hours="4"]');
-            if (primeraOpcion) {
-                primeraOpcion.click();
-            }
-            
-            const habitacionSelect = document.getElementById('habitacion_id');
-            if (habitacionSelect.value) {
-                habitacionSelect.dispatchEvent(new Event('change'));
-            }
-        });
     </script>
 </body>
 </html>
